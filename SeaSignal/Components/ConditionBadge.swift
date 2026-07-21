@@ -26,12 +26,12 @@ struct ConditionBadge: View {
     }
 }
 
-extension Color {
-    static let oceanBlue = Color(red: 0.05, green: 0.36, blue: 0.57)
-    static let deepNavy = Color(red: 0.03, green: 0.15, blue: 0.24)
-    static let seaGreen = Color(red: 0.05, green: 0.57, blue: 0.43)
-    static let warningOrange = Color(red: 0.91, green: 0.52, blue: 0.12)
-    static let dangerRed = Color(red: 0.84, green: 0.22, blue: 0.24)
-    static let mist = Color(red: 0.94, green: 0.97, blue: 0.98)
+extension ShapeStyle where Self == Color {
+    static var oceanBlue: Color { Color(red: 0.05, green: 0.36, blue: 0.57) }
+    static var deepNavy: Color { Color(red: 0.03, green: 0.15, blue: 0.24) }
+    static var seaGreen: Color { Color(red: 0.05, green: 0.57, blue: 0.43) }
+    static var warningOrange: Color { Color(red: 0.91, green: 0.52, blue: 0.12) }
+    static var dangerRed: Color { Color(red: 0.84, green: 0.22, blue: 0.24) }
+    static var mist: Color { Color(red: 0.94, green: 0.97, blue: 0.98) }
 }
 
