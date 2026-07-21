@@ -14,7 +14,7 @@ struct HomeView: View {
                         ProgressView("Finding nearby boat ramps…")
                             .frame(maxWidth: .infinity)
                             .padding(40)
-                    } else if let best = store.favorites.first {
+                    } else if let best = store.bestFavorite {
                         bestWindow(best)
                         favoriteSection
                     } else {
@@ -60,10 +60,10 @@ struct HomeView: View {
                     .font(.caption.weight(.bold))
                     .tracking(2)
                     .foregroundStyle(.oceanBlue)
-                Text("Good morning")
+                Text(greeting)
                     .font(.largeTitle.bold())
                     .foregroundStyle(.deepNavy)
-                Text("Here’s your outlook for Tuesday")
+                Text("Here’s your outlook for \(Date.now.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -74,6 +74,14 @@ struct HomeView: View {
                 .background(.white, in: Circle())
         }
         .padding(.top, 12)
+    }
+
+    private var greeting: String {
+        switch Calendar.current.component(.hour, from: Date()) {
+        case 5..<12: "Good morning"
+        case 12..<17: "Good afternoon"
+        default: "Good evening"
+        }
     }
 
     private func bestWindow(_ launch: BoatLaunch) -> some View {
@@ -99,7 +107,7 @@ struct HomeView: View {
                     Divider().overlay(.white.opacity(0.4))
                     metric(icon: "water.waves", value: launch.waveHeight.map { String(format: "%.1f m", $0) } ?? "N/A", label: "Waves")
                     Divider().overlay(.white.opacity(0.4))
-                    metric(icon: "arrow.up.to.line", value: launch.highTide, label: "High tide")
+                    metric(icon: "arrow.up.to.line", value: compactTide(launch.highTide), label: "High tide")
                 }
                 .frame(height: 48)
 
@@ -131,6 +139,13 @@ struct HomeView: View {
         }
         .font(.subheadline)
         .frame(maxWidth: .infinity)
+    }
+
+    private func compactTide(_ value: String) -> String {
+        if value.contains("Not available") || value == "Unavailable" { return "N/A" }
+        let raw = value.components(separatedBy: " · ").last ?? value
+        let parts = raw.split(separator: " ")
+        return parts.count >= 3 ? parts.suffix(2).joined(separator: " ") : raw
     }
 
     private var favoriteSection: some View {

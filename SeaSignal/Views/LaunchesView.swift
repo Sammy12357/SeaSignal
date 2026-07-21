@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LaunchesView: View {
     @EnvironmentObject private var store: LaunchStore
+    @State private var showsPinDrop = false
 
     var body: some View {
         NavigationStack {
@@ -35,6 +36,13 @@ struct LaunchesView: View {
             }
             .background(Color.mist.ignoresSafeArea())
             .navigationTitle("Boat launches")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button { showsPinDrop = true } label: {
+                        Label("Pin launch", systemImage: "mappin.and.ellipse")
+                    }
+                }
+            }
             .searchable(text: $store.searchText, prompt: "Search city or boat ramp")
             .onSubmit(of: .search) {
                 Task { await store.searchByPlace() }
@@ -44,6 +52,9 @@ struct LaunchesView: View {
             }
             .refreshable { await store.search() }
             .navigationDestination(for: BoatLaunch.self) { LaunchDetailView(launch: $0) }
+            .sheet(isPresented: $showsPinDrop) {
+                AddLaunchMapView().environmentObject(store)
+            }
         }
     }
 }

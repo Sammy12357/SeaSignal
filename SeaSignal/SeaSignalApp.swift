@@ -8,5 +8,8 @@ struct SeaSignalApp: App {
                 .tint(.oceanBlue)
                 .preferredColorScheme(.light)
         }
+        .backgroundTask(.appRefresh(WeeklyNotificationService.backgroundIdentifier)) {
+            await BackgroundForecastRefresh.run()
+        }
     }
 }

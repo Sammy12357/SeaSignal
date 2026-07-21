@@ -1,0 +1,13 @@
+{
+  "timezone": "America/New_York",
+  "hourly": {
+    "time": ["2026-07-21T08:00", "2026-07-21T09:00", "2026-07-21T10:00"],
+    "wind_speed_10m": [8.1, 12.4, 16.0],
+    "wind_gusts_10m": [11.0, 18.2, 23.5],
+    "wind_direction_10m": [90.0, 100.0, 115.0],
+    "precipitation_probability": [5.0, 15.0, 45.0],
+    "precipitation": [0.0, 0.0, 0.4],
+    "is_day": [1, 1, 0]
+  }
+}
+

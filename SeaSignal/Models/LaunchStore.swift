@@ -16,6 +16,8 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
     private let forecastService = MarineForecastService()
     private let defaults = UserDefaults.standard
     private var userLocation: CLLocation?
+
+    var currentCoordinate: CLLocationCoordinate2D? { userLocation?.coordinate }
     private var hasAutoSelectedFavorites: Bool {
         get { defaults.bool(forKey: "hasAutoSelectedNearbyLaunches") }
         set { defaults.set(newValue, forKey: "hasAutoSelectedNearbyLaunches") }
@@ -35,6 +37,13 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
 
     var favorites: [BoatLaunch] {
         launches.filter { favoriteIDs.contains($0.id) }
+    }
+
+    var bestFavorite: BoatLaunch? {
+        favorites
+            .filter { $0.conditions != .avoid && $0.conditions != .loading }
+            .max { ($0.recommendationScore ?? -1) < ($1.recommendationScore ?? -1) }
+            ?? favorites.first
     }
 
     var filteredLaunches: [BoatLaunch] {
@@ -115,20 +124,12 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
     }
 
     func refreshForecasts(ids: Set<String>? = nil) async {
-        let maxWind = defaults.double(forKey: "maxWindSpeed").nonZero(or: 24)
-        let maxGust = defaults.double(forKey: "maxGustSpeed").nonZero(or: 32)
-        let maxWave = defaults.double(forKey: "maxWaveHeight").nonZero(or: 0.8)
+        let preferences = AppPreferences.load(from: defaults)
 
         await withTaskGroup(of: (String, MarineForecast?).self) { group in
             for launch in launches where ids == nil || ids!.contains(launch.id) {
                 group.addTask { [forecastService] in
-                    let result = try? await forecastService.forecast(
-                        latitude: launch.latitude,
-                        longitude: launch.longitude,
-                        maxWind: maxWind,
-                        maxGust: maxGust,
-                        maxWave: maxWave
-                    )
+                    let result = try? await forecastService.forecast(for: launch, preferences: preferences)
                     return (launch.id, result)
                 }
             }
@@ -145,20 +146,11 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
                     launches[index].tideSource = "No tide source available"
                     continue
                 }
-                launches[index].conditions = forecast.conditions
-                launches[index].launchTime = forecast.launchTime
-                launches[index].retrievalTime = forecast.retrievalTime
-                launches[index].highTide = forecast.highTide
-                launches[index].lowTide = forecast.lowTide
-                launches[index].tideSource = forecast.tideSource
-                launches[index].windSpeed = forecast.windSpeed
-                launches[index].gustSpeed = forecast.gustSpeed
-                launches[index].waveHeight = forecast.waveHeight
-                launches[index].summary = forecast.summary
-                launches[index].forecastUpdatedAt = forecast.updatedAt
+                launches[index].apply(forecast)
             }
         }
         saveFavoriteLaunches()
+        await WeeklyNotificationService.update(using: favorites, defaults: defaults)
     }
 
     func toggleFavorite(_ launch: BoatLaunch) {
@@ -171,6 +163,34 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
         withAnimation { favoriteIDs = updated }
         saveFavorites()
         saveFavoriteLaunches()
+    }
+
+    func addPinnedLaunch(name: String, coordinate: CLLocationCoordinate2D) async {
+        let id = String(format: "%.5f,%.5f", coordinate.latitude, coordinate.longitude)
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let launch = BoatLaunch(
+            id: id,
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Pinned boat launch" : name,
+            location: "Custom map pin",
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude,
+            distanceMetres: userLocation?.distance(from: location) ?? 0
+        )
+        merge([launch])
+        var updated = favoriteIDs
+        updated.insert(id)
+        favoriteIDs = updated
+        saveFavorites()
+        saveFavoriteLaunches()
+        await refreshForecasts(ids: [id])
+    }
+
+    func setTideStation(_ station: TideStation?, for launch: BoatLaunch) async {
+        guard let index = launches.firstIndex(where: { $0.id == launch.id }) else { return }
+        launches[index].tideStationID = station?.id
+        launches[index].tideStationName = station?.name
+        saveFavoriteLaunches()
+        await refreshForecasts(ids: [launch.id])
     }
 
     func isFavorite(_ launch: BoatLaunch) -> Bool {
@@ -219,8 +239,4 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         errorMessage = "Your location couldn’t be determined. Try again or search from the Launches tab."
     }
-}
-
-private extension Double {
-    func nonZero(or fallback: Double) -> Double { self == 0 ? fallback : self }
 }

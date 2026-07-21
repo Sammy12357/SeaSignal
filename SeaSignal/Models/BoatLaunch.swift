@@ -1,8 +1,8 @@
 import Foundation
 import CoreLocation
 
-struct BoatLaunch: Identifiable, Hashable, Codable {
-    enum Conditions: String, Codable {
+struct BoatLaunch: Identifiable, Hashable, Codable, Sendable {
+    enum Conditions: String, Codable, Sendable {
         case ideal = "Ideal"
         case caution = "Caution"
         case avoid = "Avoid"
@@ -15,6 +15,8 @@ struct BoatLaunch: Identifiable, Hashable, Codable {
     let latitude: Double
     let longitude: Double
     var distanceMetres: Double
+    var tideStationID: String? = nil
+    var tideStationName: String? = nil
     var conditions: Conditions = .loading
     var launchTime: String = "Checking…"
     var retrievalTime: String = "Checking…"
@@ -24,6 +26,11 @@ struct BoatLaunch: Identifiable, Hashable, Codable {
     var windSpeed: Int = 0
     var gustSpeed: Int = 0
     var waveHeight: Double? = nil
+    var wavePeriod: Double? = nil
+    var rainChance: Int? = nil
+    var recommendationScore: Double? = nil
+    var rationale: [String]? = nil
+    var forecastIsStale: Bool? = nil
     var summary: String = "Loading the latest forecast for this location."
     var forecastUpdatedAt: Date? = nil
 

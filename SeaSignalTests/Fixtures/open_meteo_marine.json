@@ -1,0 +1,11 @@
+{
+  "timezone": "America/New_York",
+  "hourly": {
+    "time": ["2026-07-21T08:00", "2026-07-21T09:00", "2026-07-21T10:00"],
+    "wave_height": [0.3, null, 0.5],
+    "wave_period": [4.5, null, 5.2],
+    "swell_wave_height": [0.1, null, 0.2],
+    "sea_level_height_msl": [0.2, 0.3, 0.25]
+  }
+}
+
