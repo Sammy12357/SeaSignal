@@ -18,6 +18,7 @@
 		A10000000000000000000010 /* LaunchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000010 /* LaunchStore.swift */; };
 		A10000000000000000000011 /* BoatLaunchSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* BoatLaunchSearchService.swift */; };
 		A10000000000000000000012 /* MarineForecastService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* MarineForecastService.swift */; };
+		A10000000000000000000013 /* NOAATideService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000013 /* NOAATideService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +35,7 @@
 		B10000000000000000000010 /* LaunchStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchStore.swift; sourceTree = "<group>"; };
 		B10000000000000000000011 /* BoatLaunchSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoatLaunchSearchService.swift; sourceTree = "<group>"; };
 		B10000000000000000000012 /* MarineForecastService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarineForecastService.swift; sourceTree = "<group>"; };
+		B10000000000000000000013 /* NOAATideService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NOAATideService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -44,7 +46,7 @@
 		D10000000000000000000000 = {isa = PBXGroup; children = (D10000000000000000000001 /* SeaSignal */, D10000000000000000000002 /* Products */); sourceTree = "<group>"; };
 		D10000000000000000000001 /* SeaSignal */ = {isa = PBXGroup; path = SeaSignal; sourceTree = "<group>"; children = (B10000000000000000000001, B10000000000000000000002, D10000000000000000000003, D10000000000000000000004, D10000000000000000000005, B10000000000000000000009); };
 		D10000000000000000000002 /* Products */ = {isa = PBXGroup; name = Products; sourceTree = "<group>"; children = (B10000000000000000000000); };
-		D10000000000000000000003 /* Models */ = {isa = PBXGroup; path = Models; sourceTree = "<group>"; children = (B10000000000000000000003, B10000000000000000000010, B10000000000000000000011, B10000000000000000000012); };
+		D10000000000000000000003 /* Models */ = {isa = PBXGroup; path = Models; sourceTree = "<group>"; children = (B10000000000000000000003, B10000000000000000000010, B10000000000000000000011, B10000000000000000000012, B10000000000000000000013); };
 		D10000000000000000000004 /* Components */ = {isa = PBXGroup; path = Components; sourceTree = "<group>"; children = (B10000000000000000000004); };
 		D10000000000000000000005 /* Views */ = {isa = PBXGroup; path = Views; sourceTree = "<group>"; children = (B10000000000000000000005, B10000000000000000000006, B10000000000000000000007, B10000000000000000000008); };
 /* End PBXGroup section */
@@ -62,7 +64,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		C10000000000000000000002 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000004, A10000000000000000000005, A10000000000000000000006, A10000000000000000000007, A10000000000000000000008, A10000000000000000000010, A10000000000000000000011, A10000000000000000000012); runOnlyForDeploymentPostprocessing = 0; };
+		C10000000000000000000002 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000004, A10000000000000000000005, A10000000000000000000006, A10000000000000000000007, A10000000000000000000008, A10000000000000000000010, A10000000000000000000011, A10000000000000000000012, A10000000000000000000013); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */

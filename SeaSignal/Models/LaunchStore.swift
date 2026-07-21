@@ -141,12 +141,16 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
                     launches[index].launchTime = "Unavailable"
                     launches[index].retrievalTime = "Unavailable"
                     launches[index].highTide = "Unavailable"
+                    launches[index].lowTide = "Unavailable"
+                    launches[index].tideSource = "No tide source available"
                     continue
                 }
                 launches[index].conditions = forecast.conditions
                 launches[index].launchTime = forecast.launchTime
                 launches[index].retrievalTime = forecast.retrievalTime
                 launches[index].highTide = forecast.highTide
+                launches[index].lowTide = forecast.lowTide
+                launches[index].tideSource = forecast.tideSource
                 launches[index].windSpeed = forecast.windSpeed
                 launches[index].gustSpeed = forecast.gustSpeed
                 launches[index].waveHeight = forecast.waveHeight

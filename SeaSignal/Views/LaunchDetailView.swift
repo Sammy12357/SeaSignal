@@ -32,8 +32,14 @@ struct LaunchDetailView: View {
                         tripTime("Retrieve", launch.retrievalTime, "arrow.up.circle.fill")
                     }
                     Divider()
-                    Label("High tide at \(launch.highTide)", systemImage: "water.waves.and.arrow.up")
-                        .font(.subheadline.weight(.semibold))
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("High tide: \(launch.highTide)", systemImage: "water.waves.and.arrow.up")
+                        Label("Low tide: \(launch.lowTide)", systemImage: "water.waves.and.arrow.down")
+                        Text(launch.tideSource)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.subheadline.weight(.semibold))
                     Text(launch.summary).font(.subheadline).foregroundStyle(.secondary)
                 }
                 .padding(20)

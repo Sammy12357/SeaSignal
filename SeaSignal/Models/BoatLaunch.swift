@@ -19,6 +19,8 @@ struct BoatLaunch: Identifiable, Hashable, Codable {
     var launchTime: String = "Checking…"
     var retrievalTime: String = "Checking…"
     var highTide: String = "Checking…"
+    var lowTide: String = "Checking…"
+    var tideSource: String = "Checking tide source…"
     var windSpeed: Int = 0
     var gustSpeed: Int = 0
     var waveHeight: Double? = nil
