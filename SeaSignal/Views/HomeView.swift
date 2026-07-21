@@ -1,15 +1,25 @@
 import SwiftUI
 
 struct HomeView: View {
-    private let favorites = BoatLaunch.samples.filter(\.isFavorite)
+    @EnvironmentObject private var store: LaunchStore
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 22) {
                     header
-                    bestWindow
-                    favoriteSection
+                    if store.authorizationStatus == .notDetermined {
+                        locationRequestCard
+                    } else if store.isLoading && store.launches.isEmpty {
+                        ProgressView("Finding nearby boat ramps…")
+                            .frame(maxWidth: .infinity)
+                            .padding(40)
+                    } else if let best = store.favorites.first {
+                        bestWindow(best)
+                        favoriteSection
+                    } else {
+                        emptyFavorites
+                    }
                 }
                 .padding(.horizontal, 18)
                 .padding(.bottom, 30)
@@ -17,6 +27,30 @@ struct HomeView: View {
             .background(Color.mist.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
         }
+    }
+
+    private var locationRequestCard: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "location.circle.fill").font(.system(size: 42)).foregroundStyle(.oceanBlue)
+            Text("Find launches near you").font(.title3.bold())
+            Text("Allow your location to find nearby boat ramps and automatically select the closest three.")
+                .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            Button("Use My Location") { store.start() }
+                .buttonStyle(.borderedProminent)
+        }
+        .padding(24)
+        .background(.white, in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var emptyFavorites: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "heart.slash").font(.largeTitle).foregroundStyle(.secondary)
+            Text("No favorite launches").font(.headline)
+            Text(store.errorMessage ?? "Choose the ramps you use from the Launches tab.")
+                .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity).padding(30)
+        .background(.white, in: RoundedRectangle(cornerRadius: 20))
     }
 
     private var header: some View {
@@ -42,8 +76,8 @@ struct HomeView: View {
         .padding(.top, 12)
     }
 
-    private var bestWindow: some View {
-        NavigationLink(value: favorites[0]) {
+    private func bestWindow(_ launch: BoatLaunch) -> some View {
+        NavigationLink(value: launch) {
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
                     Label("BEST BOATING WINDOW", systemImage: "sparkles")
@@ -54,22 +88,22 @@ struct HomeView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Harbourfront Launch")
+                    Text(launch.name)
                         .font(.title2.bold())
-                    Text("Today · 7:15 AM–2:30 PM")
+                    Text("\(launch.launchTime)–\(launch.retrievalTime)")
                         .font(.headline)
                 }
 
                 HStack(spacing: 0) {
-                    metric(icon: "wind", value: "9 km/h", label: "Wind")
+                    metric(icon: "wind", value: "\(launch.windSpeed) km/h", label: "Wind")
                     Divider().overlay(.white.opacity(0.4))
-                    metric(icon: "water.waves", value: "0.3 m", label: "Waves")
+                    metric(icon: "water.waves", value: launch.waveHeight.map { String(format: "%.1f m", $0) } ?? "N/A", label: "Waves")
                     Divider().overlay(.white.opacity(0.4))
-                    metric(icon: "arrow.up.to.line", value: "7:48 AM", label: "High tide")
+                    metric(icon: "arrow.up.to.line", value: launch.highTide, label: "High tide")
                 }
                 .frame(height: 48)
 
-                Text("Launch near high tide. Conditions remain within your limits until mid-afternoon.")
+                Text(launch.summary)
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.85))
             }
@@ -104,10 +138,10 @@ struct HomeView: View {
             HStack {
                 Text("Favorite launches").font(.title3.bold()).foregroundStyle(.deepNavy)
                 Spacer()
-                Text("\(favorites.count) tracked").font(.caption).foregroundStyle(.secondary)
+                Text("\(store.favorites.count) tracked").font(.caption).foregroundStyle(.secondary)
             }
 
-            ForEach(favorites) { launch in
+            ForEach(store.favorites) { launch in
                 NavigationLink(value: launch) {
                     LaunchCard(launch: launch)
                 }
@@ -134,7 +168,7 @@ struct LaunchCard: View {
 
             Divider()
 
-            if launch.conditions == .avoid {
+            if launch.conditions == .avoid || launch.conditions == .loading {
                 Text(launch.summary).font(.subheadline).foregroundStyle(.secondary)
             } else {
                 HStack {
@@ -160,4 +194,3 @@ struct LaunchCard: View {
         }
     }
 }
-

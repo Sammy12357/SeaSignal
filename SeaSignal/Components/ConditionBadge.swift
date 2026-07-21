@@ -8,6 +8,7 @@ struct ConditionBadge: View {
         case .ideal: .seaGreen
         case .caution: .warningOrange
         case .avoid: .dangerRed
+        case .loading: .oceanBlue
         }
     }
 
@@ -34,4 +35,3 @@ extension ShapeStyle where Self == Color {
     static var dangerRed: Color { Color(red: 0.84, green: 0.22, blue: 0.24) }
     static var mist: Color { Color(red: 0.94, green: 0.97, blue: 0.98) }
 }
-

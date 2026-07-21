@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LaunchDetailView: View {
+    @EnvironmentObject private var store: LaunchStore
     let launch: BoatLaunch
 
     var body: some View {
@@ -10,7 +11,9 @@ struct LaunchDetailView: View {
                     HStack {
                         ConditionBadge(conditions: launch.conditions)
                         Spacer()
-                        Button(action: {}) { Image(systemName: launch.isFavorite ? "heart.fill" : "heart") }
+                        Button { store.toggleFavorite(launch) } label: {
+                            Image(systemName: store.isFavorite(launch) ? "heart.fill" : "heart")
+                        }
                     }
                     Text(launch.name).font(.largeTitle.bold()).foregroundStyle(.deepNavy)
                     Label("\(launch.location) · \(launch.distance) away", systemImage: "location.fill")
@@ -41,7 +44,7 @@ struct LaunchDetailView: View {
                     HStack(spacing: 12) {
                         conditionTile("wind", "\(launch.windSpeed)", "km/h wind")
                         conditionTile("wind.circle", "\(launch.gustSpeed)", "km/h gusts")
-                        conditionTile("water.waves", String(format: "%.1f", launch.waveHeight), "m waves")
+                        conditionTile("water.waves", launch.waveHeight.map { String(format: "%.1f", $0) } ?? "N/A", "m waves")
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -49,8 +52,12 @@ struct LaunchDetailView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Label("Why this window?", systemImage: "checkmark.shield.fill")
                         .font(.headline).foregroundStyle(.seaGreen)
-                    Text("Wind and waves remain below your chosen limits for the full trip. The launch time is close to high tide, with a safety buffer before conditions change.")
+                    Text(launch.summary)
                         .font(.subheadline).foregroundStyle(.secondary)
+                    if let updated = launch.forecastUpdatedAt {
+                        Text("Forecast checked \(updated.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 .padding(18)
                 .background(Color.seaGreen.opacity(0.09), in: RoundedRectangle(cornerRadius: 18))
@@ -80,4 +87,3 @@ struct LaunchDetailView: View {
         .background(.white, in: RoundedRectangle(cornerRadius: 16))
     }
 }
-

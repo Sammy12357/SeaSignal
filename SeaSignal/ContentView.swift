@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var launchStore = LaunchStore()
+
     var body: some View {
         TabView {
             HomeView()
@@ -12,10 +14,11 @@ struct ContentView: View {
             PreferencesView()
                 .tabItem { Label("Preferences", systemImage: "slider.horizontal.3") }
         }
+        .environmentObject(launchStore)
+        .task { launchStore.start() }
     }
 }
 
 #Preview {
     ContentView()
 }
-
