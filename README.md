@@ -6,7 +6,7 @@ Sea Signal is a SwiftUI boating companion that discovers boat launches, evaluate
 
 - Location-based ramp discovery with automatic nearest-three favorites
 - Search by ramp, city, or address using Apple MapKit
-- Full-screen wind map with animated flow, speed colors, clusters, filters, and a 3-hour forecast timeline
+- Full-screen wind map with speed colors, switchable particle/arrows animation, clusters, filters, and a 3-hour forecast timeline
 - Boat-ramp and fishing-pier discovery with one-tap favorite tracking
 - Custom map-pin launches for ramps that are not indexed
 - Persistent favorites and optional NOAA tide-station override

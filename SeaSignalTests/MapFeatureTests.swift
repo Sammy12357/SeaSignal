@@ -20,6 +20,9 @@ final class MapFeatureTests: XCTestCase {
         XCTAssertEqual(sample.speed, 15, accuracy: 0.001)
         XCTAssertEqual(sample.u, 15, accuracy: 0.001)
         XCTAssertEqual(sample.v, -15, accuracy: 0.001)
+
+        let clamped = try XCTUnwrap(field.sampleClamped(to: CLLocationCoordinate2D(latitude: 4, longitude: -2)))
+        XCTAssertEqual(clamped.speed, 20, accuracy: 0.001)
     }
 
     func testOverpassDecodesNodeAndWayCenter() throws {

@@ -17,11 +17,13 @@ struct MapTabView: View {
     @State private var favoritesOnly = false
     @State private var showWind = true
     @State private var satellite = false
+    @State private var showsMapSettings = false
     @State private var searchText = ""
     @State private var offsetHours = 0
     @State private var showsLaunchList = false
     @State private var centeredOnUser = false
     @State private var lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+    @AppStorage("mapWindDisplayMode") private var windDisplayModeRaw = WindDisplayMode.particleAnimation.rawValue
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -40,13 +42,16 @@ struct MapTabView: View {
                     }
 
                 if showWind, let field = viewModel.windField {
-                    WindColorOverlay(field: field, proxy: proxy)
-                    WindOverlay(
-                        field: field,
-                        proxy: proxy,
-                        isPaused: scenePhase != .active,
-                        lowPowerMode: lowPowerMode
-                    )
+                    WindColorOverlay(field: field, region: visibleRegion)
+                    if windDisplayMode != .colorOnly {
+                        WindOverlay(
+                            field: field,
+                            region: visibleRegion,
+                            mode: windDisplayMode,
+                            isPaused: scenePhase != .active,
+                            lowPowerMode: lowPowerMode
+                        )
+                    }
                 }
 
                 markerOverlay(proxy: proxy)
@@ -58,6 +63,13 @@ struct MapTabView: View {
         }
         .sheet(item: $selectedSpot) { SpotDetailSheet(spot: $0).environmentObject(store) }
         .sheet(isPresented: $showsLaunchList) { LaunchesView().environmentObject(store) }
+        .sheet(isPresented: $showsMapSettings) {
+            MapLayerSettingsSheet(
+                showWind: $showWind,
+                windMode: windDisplayModeBinding,
+                satellite: $satellite
+            )
+        }
         .onAppear {
             viewModel.regionSettled(visibleRegion, favorites: store.favoriteMapSpots, offsetHours: offsetHours)
             centerOnUserIfPossible()
@@ -186,7 +198,7 @@ struct MapTabView: View {
         VStack(spacing: 10) {
             controlButton(icon: showWind ? "wind" : "wind.snow", label: "Wind layer") { showWind.toggle() }
             controlButton(icon: "location.fill", label: "My location") { centerOnUser(force: true) }
-            controlButton(icon: satellite ? "map.fill" : "globe.americas.fill", label: "Map style") { satellite.toggle() }
+            controlButton(icon: "map.fill", label: "Map settings") { showsMapSettings = true }
             controlButton(icon: "list.bullet", label: "Launch list") { showsLaunchList = true }
         }
     }
@@ -239,6 +251,17 @@ struct MapTabView: View {
     private func centerOnUserIfPossible() {
         guard !centeredOnUser else { return }
         centerOnUser(force: false)
+    }
+
+    private var windDisplayMode: WindDisplayMode {
+        WindDisplayMode(rawValue: windDisplayModeRaw) ?? .particleAnimation
+    }
+
+    private var windDisplayModeBinding: Binding<WindDisplayMode> {
+        Binding(
+            get: { windDisplayMode },
+            set: { windDisplayModeRaw = $0.rawValue }
+        )
     }
 
     private func centerOnUser(force: Bool) {

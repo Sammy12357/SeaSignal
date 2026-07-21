@@ -16,7 +16,7 @@
 2. `OverpassProvider` discovers OpenStreetMap slipways and piers; Apple local search supplies a resilient fallback when an Overpass instance is unavailable.
 3. Saved favorites win coordinate-level deduplication, and zoomed-out results are grouped into lightweight display clusters.
 4. `WindGridProvider` samples an Open-Meteo 7×7 grid at the selected forecast hour and converts speed/direction into vector components.
-5. `WindColorOverlay` draws the interpolated speed wash while `WindOverlay` animates deterministic streamlines. Particle count and frame rate drop automatically in Low Power Mode.
+5. `WindColorOverlay` draws a screen-space interpolated speed wash while `WindOverlay` animates deterministic particles or direction arrows. Screen-space rendering avoids device-specific MapKit projection failures, and particle count and frame rate drop automatically in Low Power Mode.
 6. Ramp and wind results are cached on disk for 20 minutes, with stale wind data available when the network is offline.
 
 Map requests are cancelled or coalesced as the viewport and timeline change. The animated layer pauses when the app is inactive.

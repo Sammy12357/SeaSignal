@@ -40,6 +40,13 @@ struct WindField: Codable, Hashable, Sendable {
         return (bilinear(u), bilinear(v), bilinear(speed))
     }
 
+    func sampleClamped(to coordinate: CLLocationCoordinate2D) -> (u: Double, v: Double, speed: Double)? {
+        sample(at: CLLocationCoordinate2D(
+            latitude: min(max(coordinate.latitude, minLatitude), maxLatitude),
+            longitude: min(max(coordinate.longitude, minLongitude), maxLongitude)
+        ))
+    }
+
     func coordinate(row: Int, column: Int) -> CLLocationCoordinate2D {
         let latitude = minLatitude + (maxLatitude - minLatitude) * Double(row) / Double(max(1, rows - 1))
         let longitude = minLongitude + (maxLongitude - minLongitude) * Double(column) / Double(max(1, columns - 1))
