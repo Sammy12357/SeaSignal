@@ -6,6 +6,8 @@ Sea Signal is a SwiftUI boating companion that discovers boat launches, evaluate
 
 - Location-based ramp discovery with automatic nearest-three favorites
 - Search by ramp, city, or address using Apple MapKit
+- Full-screen wind map with animated flow, speed colors, clusters, filters, and a 3-hour forecast timeline
+- Boat-ramp and fishing-pier discovery with one-tap favorite tracking
 - Custom map-pin launches for ramps that are not indexed
 - Persistent favorites and optional NOAA tide-station override
 - Seven-day wind, gust, rain, daylight, wave, swell, and tide timeline
@@ -18,6 +20,7 @@ Sea Signal is a SwiftUI boating companion that discovers boat launches, evaluate
 ## Data providers
 
 - Apple MapKit: launch discovery and map search
+- OpenStreetMap Overpass API: mapped boat ramps and fishing piers, with MapKit fallback
 - Open-Meteo Forecast API: wind, gusts, precipitation, and daylight
 - Open-Meteo Marine API: waves, wave period, swell, and modeled water levels
 - NOAA CO-OPS: official U.S. tide predictions from nearby stations
@@ -33,7 +36,6 @@ Open `SeaSignal.xcodeproj`, select an iPhone Simulator, and run the `SeaSignal` 
 
 ## Tests
 
-Run the unit tests with `Command-U` in Xcode. Tests cover provider decoding, local-time parsing, null marine values, calm/windy recommendations, daylight rules, and inland ramps without wave/tide coverage.
+Run the unit tests with `Command-U` in Xcode. Tests cover provider decoding, wind-grid interpolation, map deduplication, favorite priority, local-time parsing, null marine values, calm/windy recommendations, daylight rules, and inland ramps without wave/tide coverage.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the live-data pipeline and safety behavior.
-

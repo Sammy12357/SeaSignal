@@ -9,8 +9,8 @@ struct ContentView: View {
             HomeView()
                 .tabItem { Label("Home", systemImage: "house.fill") }
 
-            LaunchesView()
-                .tabItem { Label("Launches", systemImage: "map.fill") }
+            MapTabView()
+                .tabItem { Label("Map & Search", systemImage: "map.fill") }
 
             PreferencesView()
                 .tabItem { Label("Preferences", systemImage: "slider.horizontal.3") }

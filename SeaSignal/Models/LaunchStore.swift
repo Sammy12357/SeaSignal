@@ -39,6 +39,18 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
         launches.filter { favoriteIDs.contains($0.id) }
     }
 
+    var favoriteMapSpots: [MapSpot] {
+        favorites.map {
+            MapSpot(
+                id: "favorite:\($0.id)",
+                name: $0.name,
+                latitude: $0.latitude,
+                longitude: $0.longitude,
+                kind: .ramp
+            )
+        }
+    }
+
     var bestFavorite: BoatLaunch? {
         favorites
             .filter { $0.conditions != .avoid && $0.conditions != .loading }
@@ -195,6 +207,40 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
 
     func isFavorite(_ launch: BoatLaunch) -> Bool {
         favoriteIDs.contains(launch.id)
+    }
+
+    func favoriteLaunch(matching spot: MapSpot) -> BoatLaunch? {
+        favorites.first { GeoMath.distance($0.coordinate, spot.coordinate) < 50 }
+    }
+
+    func isFavorite(_ spot: MapSpot) -> Bool {
+        favoriteLaunch(matching: spot) != nil
+    }
+
+    func addFavorite(from spot: MapSpot) async {
+        if favoriteLaunch(matching: spot) != nil { return }
+        let id = "map:\(spot.id)"
+        let coordinate = CLLocation(latitude: spot.latitude, longitude: spot.longitude)
+        let launch = BoatLaunch(
+            id: id,
+            name: spot.name,
+            location: spot.kind.label,
+            latitude: spot.latitude,
+            longitude: spot.longitude,
+            distanceMetres: userLocation?.distance(from: coordinate) ?? 0
+        )
+        merge([launch])
+        favoriteIDs.insert(id)
+        saveFavorites()
+        saveFavoriteLaunches()
+        await refreshForecasts(ids: [id])
+    }
+
+    func removeFavorite(matching spot: MapSpot) {
+        guard let launch = favoriteLaunch(matching: spot) else { return }
+        withAnimation { _ = favoriteIDs.remove(launch.id) }
+        saveFavorites()
+        saveFavoriteLaunches()
     }
 
     private func saveFavorites() {

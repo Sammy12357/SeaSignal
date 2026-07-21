@@ -10,6 +10,17 @@
 6. `RecommendationEngine` applies hard safety limits, finds contiguous windows of the chosen trip length, scores the passing windows, and ranks them.
 7. `MarineForecastService` adapts the best result for the current SwiftUI screens.
 
+## Map pipeline
+
+1. `MapTabView` reports its visible MapKit region through a 550 ms region throttler.
+2. `OverpassProvider` discovers OpenStreetMap slipways and piers; Apple local search supplies a resilient fallback when an Overpass instance is unavailable.
+3. Saved favorites win coordinate-level deduplication, and zoomed-out results are grouped into lightweight display clusters.
+4. `WindGridProvider` samples an Open-Meteo 7×7 grid at the selected forecast hour and converts speed/direction into vector components.
+5. `WindColorOverlay` draws the interpolated speed wash while `WindOverlay` animates deterministic streamlines. Particle count and frame rate drop automatically in Low Power Mode.
+6. Ramp and wind results are cached on disk for 20 minutes, with stale wind data available when the network is offline.
+
+Map requests are cancelled or coalesced as the viewport and timeline change. The animated layer pauses when the app is inactive.
+
 ## Safety behavior
 
 - Missing wind or gust data prevents a recommendation.
@@ -26,4 +37,3 @@ The app schedules one repeating weekly local notification. Its content is refres
 ## Tests
 
 `SeaSignalTests` contains deterministic recommendation-engine tests plus stored Open-Meteo response fixtures. Networking is intentionally kept outside the pure engine so forecast rules can be validated without an internet connection.
-

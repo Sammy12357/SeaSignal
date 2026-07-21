@@ -29,10 +29,31 @@
 		A10000000000000000000021 /* AddLaunchMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000021 /* AddLaunchMapView.swift */; };
 		A10000000000000000000022 /* WeeklyNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000022 /* WeeklyNotificationService.swift */; };
 		A10000000000000000000024 /* TideStationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000024 /* TideStationPickerView.swift */; };
+		A10000000000000000000030 /* MapSpot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000030 /* MapSpot.swift */; };
+		A10000000000000000000031 /* WindField.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000031 /* WindField.swift */; };
+		A10000000000000000000032 /* MapTabViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000032 /* MapTabViewModel.swift */; };
+		A10000000000000000000033 /* OverpassProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000033 /* OverpassProvider.swift */; };
+		A10000000000000000000034 /* WindGridProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000034 /* WindGridProvider.swift */; };
+		A10000000000000000000035 /* GeoMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000035 /* GeoMath.swift */; };
+		A10000000000000000000036 /* RegionThrottler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000036 /* RegionThrottler.swift */; };
+		A10000000000000000000037 /* MapDiskCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000037 /* MapDiskCache.swift */; };
+		A10000000000000000000038 /* Particle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000038 /* Particle.swift */; };
+		A10000000000000000000039 /* WindParticleSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000039 /* WindParticleSystem.swift */; };
+		A10000000000000000000040 /* WindColorOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000040 /* WindColorOverlay.swift */; };
+		A10000000000000000000041 /* WindOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000041 /* WindOverlay.swift */; };
+		A10000000000000000000042 /* MapMarkerViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000042 /* MapMarkerViews.swift */; };
+		A10000000000000000000043 /* MapFilterBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000043 /* MapFilterBar.swift */; };
+		A10000000000000000000044 /* WindLegendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000044 /* WindLegendView.swift */; };
+		A10000000000000000000045 /* ForecastTimelineBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000045 /* ForecastTimelineBar.swift */; };
+		A10000000000000000000046 /* SpotDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000046 /* SpotDetailSheet.swift */; };
+		A10000000000000000000047 /* MapTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000047 /* MapTabView.swift */; };
 		A20000000000000000000001 /* RecommendationEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000001 /* RecommendationEngineTests.swift */; };
 		A20000000000000000000002 /* ProviderDecoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* ProviderDecoderTests.swift */; };
 		A20000000000000000000003 /* open_meteo_weather.json in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000003 /* open_meteo_weather.json */; };
 		A20000000000000000000004 /* open_meteo_marine.json in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* open_meteo_marine.json */; };
+		A20000000000000000000005 /* MapFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000005 /* MapFeatureTests.swift */; };
+		A20000000000000000000006 /* overpass_spots.json in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000006 /* overpass_spots.json */; };
+		A20000000000000000000007 /* wind_grid.json in Resources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000007 /* wind_grid.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,11 +86,32 @@
 		B10000000000000000000022 /* WeeklyNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyNotificationService.swift; sourceTree = "<group>"; };
 		B10000000000000000000023 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B10000000000000000000024 /* TideStationPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TideStationPickerView.swift; sourceTree = "<group>"; };
+		B10000000000000000000030 /* MapSpot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapSpot.swift; sourceTree = "<group>"; };
+		B10000000000000000000031 /* WindField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindField.swift; sourceTree = "<group>"; };
+		B10000000000000000000032 /* MapTabViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapTabViewModel.swift; sourceTree = "<group>"; };
+		B10000000000000000000033 /* OverpassProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverpassProvider.swift; sourceTree = "<group>"; };
+		B10000000000000000000034 /* WindGridProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindGridProvider.swift; sourceTree = "<group>"; };
+		B10000000000000000000035 /* GeoMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoMath.swift; sourceTree = "<group>"; };
+		B10000000000000000000036 /* RegionThrottler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionThrottler.swift; sourceTree = "<group>"; };
+		B10000000000000000000037 /* MapDiskCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapDiskCache.swift; sourceTree = "<group>"; };
+		B10000000000000000000038 /* Particle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Particle.swift; sourceTree = "<group>"; };
+		B10000000000000000000039 /* WindParticleSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindParticleSystem.swift; sourceTree = "<group>"; };
+		B10000000000000000000040 /* WindColorOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindColorOverlay.swift; sourceTree = "<group>"; };
+		B10000000000000000000041 /* WindOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindOverlay.swift; sourceTree = "<group>"; };
+		B10000000000000000000042 /* MapMarkerViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapMarkerViews.swift; sourceTree = "<group>"; };
+		B10000000000000000000043 /* MapFilterBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapFilterBar.swift; sourceTree = "<group>"; };
+		B10000000000000000000044 /* WindLegendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindLegendView.swift; sourceTree = "<group>"; };
+		B10000000000000000000045 /* ForecastTimelineBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForecastTimelineBar.swift; sourceTree = "<group>"; };
+		B10000000000000000000046 /* SpotDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotDetailSheet.swift; sourceTree = "<group>"; };
+		B10000000000000000000047 /* MapTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapTabView.swift; sourceTree = "<group>"; };
 		B20000000000000000000000 /* SeaSignalTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SeaSignalTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B20000000000000000000001 /* RecommendationEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecommendationEngineTests.swift; sourceTree = "<group>"; };
 		B20000000000000000000002 /* ProviderDecoderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderDecoderTests.swift; sourceTree = "<group>"; };
 		B20000000000000000000003 /* open_meteo_weather.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = open_meteo_weather.json; sourceTree = "<group>"; };
 		B20000000000000000000004 /* open_meteo_marine.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = open_meteo_marine.json; sourceTree = "<group>"; };
+		B20000000000000000000005 /* MapFeatureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapFeatureTests.swift; sourceTree = "<group>"; };
+		B20000000000000000000006 /* overpass_spots.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = overpass_spots.json; sourceTree = "<group>"; };
+		B20000000000000000000007 /* wind_grid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = wind_grid.json; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,15 +121,22 @@
 
 /* Begin PBXGroup section */
 		D10000000000000000000000 = {isa = PBXGroup; children = (D10000000000000000000001 /* SeaSignal */, D20000000000000000000001 /* SeaSignalTests */, D10000000000000000000002 /* Products */); sourceTree = "<group>"; };
-		D10000000000000000000001 /* SeaSignal */ = {isa = PBXGroup; path = SeaSignal; sourceTree = "<group>"; children = (B10000000000000000000001, B10000000000000000000002, B10000000000000000000023, D10000000000000000000003, D10000000000000000000006, D10000000000000000000004, D10000000000000000000005, B10000000000000000000009); };
+		D10000000000000000000001 /* SeaSignal */ = {isa = PBXGroup; path = SeaSignal; sourceTree = "<group>"; children = (B10000000000000000000001, B10000000000000000000002, B10000000000000000000023, D10000000000000000000003, D10000000000000000000006, D10000000000000000000008, D10000000000000000000004, D10000000000000000000005, B10000000000000000000009); };
 		D10000000000000000000002 /* Products */ = {isa = PBXGroup; name = Products; sourceTree = "<group>"; children = (B10000000000000000000000, B20000000000000000000000); };
 		D10000000000000000000003 /* Models */ = {isa = PBXGroup; path = Models; sourceTree = "<group>"; children = (B10000000000000000000003, B10000000000000000000010, B10000000000000000000011, B10000000000000000000014, B10000000000000000000015); };
 		D10000000000000000000004 /* Components */ = {isa = PBXGroup; path = Components; sourceTree = "<group>"; children = (B10000000000000000000004); };
 		D10000000000000000000005 /* Views */ = {isa = PBXGroup; path = Views; sourceTree = "<group>"; children = (B10000000000000000000005, B10000000000000000000006, B10000000000000000000007, B10000000000000000000008, D10000000000000000000007); };
 		D10000000000000000000006 /* Services */ = {isa = PBXGroup; path = Services; sourceTree = "<group>"; children = (B10000000000000000000012, B10000000000000000000013, B10000000000000000000016, B10000000000000000000017, B10000000000000000000018, B10000000000000000000019, B10000000000000000000020, B10000000000000000000022); };
 		D10000000000000000000007 /* Launches */ = {isa = PBXGroup; path = Launches; sourceTree = "<group>"; children = (B10000000000000000000021, B10000000000000000000024); };
-		D20000000000000000000001 /* SeaSignalTests */ = {isa = PBXGroup; path = SeaSignalTests; sourceTree = "<group>"; children = (B20000000000000000000001, B20000000000000000000002, D20000000000000000000002); };
+		D10000000000000000000008 /* Map */ = {isa = PBXGroup; path = Map; sourceTree = "<group>"; children = (D10000000000000000000009, D1000000000000000000000A, D1000000000000000000000B, D1000000000000000000000C, D1000000000000000000000D); };
+		D10000000000000000000009 /* Models */ = {isa = PBXGroup; path = Models; sourceTree = "<group>"; children = (B10000000000000000000030, B10000000000000000000031, B10000000000000000000032); };
+		D1000000000000000000000A /* Providers */ = {isa = PBXGroup; path = Providers; sourceTree = "<group>"; children = (B10000000000000000000033, B10000000000000000000034); };
+		D1000000000000000000000B /* Wind */ = {isa = PBXGroup; path = Wind; sourceTree = "<group>"; children = (B10000000000000000000038, B10000000000000000000039, B10000000000000000000040, B10000000000000000000041); };
+		D1000000000000000000000C /* Views */ = {isa = PBXGroup; path = Views; sourceTree = "<group>"; children = (B10000000000000000000042, B10000000000000000000043, B10000000000000000000044, B10000000000000000000045, B10000000000000000000046, B10000000000000000000047); };
+		D1000000000000000000000D /* Support */ = {isa = PBXGroup; path = Support; sourceTree = "<group>"; children = (B10000000000000000000035, B10000000000000000000036, B10000000000000000000037); };
+		D20000000000000000000001 /* SeaSignalTests */ = {isa = PBXGroup; path = SeaSignalTests; sourceTree = "<group>"; children = (B20000000000000000000001, B20000000000000000000002, B20000000000000000000005, D20000000000000000000002, D20000000000000000000003); };
 		D20000000000000000000002 /* Fixtures */ = {isa = PBXGroup; path = Fixtures; sourceTree = "<group>"; children = (B20000000000000000000003, B20000000000000000000004); };
+		D20000000000000000000003 /* MapFixtures */ = {isa = PBXGroup; path = MapFixtures; sourceTree = "<group>"; children = (B20000000000000000000006, B20000000000000000000007); };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -101,12 +150,12 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		C10000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000009); runOnlyForDeploymentPostprocessing = 0; };
-		C20000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A20000000000000000000003, A20000000000000000000004); runOnlyForDeploymentPostprocessing = 0; };
+		C20000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A20000000000000000000003, A20000000000000000000004, A20000000000000000000006, A20000000000000000000007); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		C10000000000000000000002 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000004, A10000000000000000000005, A10000000000000000000006, A10000000000000000000007, A10000000000000000000008, A10000000000000000000010, A10000000000000000000011, A10000000000000000000012, A10000000000000000000013, A10000000000000000000014, A10000000000000000000015, A10000000000000000000016, A10000000000000000000017, A10000000000000000000018, A10000000000000000000019, A10000000000000000000020, A10000000000000000000021, A10000000000000000000022, A10000000000000000000024); runOnlyForDeploymentPostprocessing = 0; };
-		C20000000000000000000002 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A20000000000000000000001, A20000000000000000000002); runOnlyForDeploymentPostprocessing = 0; };
+		C10000000000000000000002 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000004, A10000000000000000000005, A10000000000000000000006, A10000000000000000000007, A10000000000000000000008, A10000000000000000000010, A10000000000000000000011, A10000000000000000000012, A10000000000000000000013, A10000000000000000000014, A10000000000000000000015, A10000000000000000000016, A10000000000000000000017, A10000000000000000000018, A10000000000000000000019, A10000000000000000000020, A10000000000000000000021, A10000000000000000000022, A10000000000000000000024, A10000000000000000000030, A10000000000000000000031, A10000000000000000000032, A10000000000000000000033, A10000000000000000000034, A10000000000000000000035, A10000000000000000000036, A10000000000000000000037, A10000000000000000000038, A10000000000000000000039, A10000000000000000000040, A10000000000000000000041, A10000000000000000000042, A10000000000000000000043, A10000000000000000000044, A10000000000000000000045, A10000000000000000000046, A10000000000000000000047); runOnlyForDeploymentPostprocessing = 0; };
+		C20000000000000000000002 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A20000000000000000000001, A20000000000000000000002, A20000000000000000000005); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
