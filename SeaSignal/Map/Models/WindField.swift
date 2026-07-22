@@ -1,6 +1,44 @@
 import CoreLocation
 import Foundation
 
+enum WindLayerMode: String, CaseIterable, Identifiable {
+    case hybrid
+    case modeled
+    case observations
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .hybrid: "Hybrid"
+        case .modeled: "Modeled"
+        case .observations: "Stations"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .hybrid: "point.3.connected.trianglepath.dotted"
+        case .modeled: "wind"
+        case .observations: "dot.radiowaves.left.and.right"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .hybrid:
+            "Combines the continuous Open-Meteo wind field with current NOAA station measurements. Station markers appear at Now."
+        case .modeled:
+            "Shows the continuous modeled wind field and forecast timeline without station markers."
+        case .observations:
+            "Shows recent measured wind from NOAA buoys and coastal stations without a modeled overlay."
+        }
+    }
+
+    var showsModeledWind: Bool { self != .observations }
+    var showsObservations: Bool { self != .modeled }
+}
+
 struct WindSample: Codable, Hashable, Sendable {
     let speedKnots: Double
     let directionDegrees: Double
@@ -8,6 +46,37 @@ struct WindSample: Codable, Hashable, Sendable {
     var u: Double { -speedKnots * sin(directionDegrees * .pi / 180) }
     var v: Double { -speedKnots * cos(directionDegrees * .pi / 180) }
 }
+
+struct WindObservation: Identifiable, Codable, Hashable, Sendable {
+    let stationID: String
+    let stationName: String
+    let latitude: Double
+    let longitude: Double
+    let speedKnots: Double
+    let directionDegrees: Double
+    let gustKnots: Double?
+    let observedAt: Date
+
+    var id: String { stationID }
+
+    var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
+    var compassDirection: String {
+        let labels = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+        let normalized = directionDegrees.truncatingRemainder(dividingBy: 360)
+        let positive = normalized < 0 ? normalized + 360 : normalized
+        return labels[Int((positive / 45).rounded()) % labels.count]
+    }
+}
+
+struct WindObservationSnapshot: Sendable {
+    let observations: [WindObservation]
+    let fetchedAt: Date
+    let isStale: Bool
+}
+
 struct WindField: Codable, Hashable, Sendable {
     let rows: Int
     let columns: Int

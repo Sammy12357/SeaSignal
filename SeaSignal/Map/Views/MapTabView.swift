@@ -13,6 +13,7 @@ struct MapTabView: View {
     @State private var position: MapCameraPosition = .region(defaultMapRegion)
     @State private var visibleRegion = defaultMapRegion
     @State private var selectedSpot: MapSpot?
+    @State private var selectedWindObservation: WindObservation?
     @State private var filter: SpotFilter = .all
     @State private var favoritesOnly = false
     @State private var showWind = true
@@ -24,6 +25,7 @@ struct MapTabView: View {
     @State private var centeredOnUser = false
     @State private var lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
     @AppStorage("mapWindDisplayMode") private var windDisplayModeRaw = WindDisplayMode.particleAnimation.rawValue
+    @AppStorage("mapWindLayerMode") private var windLayerModeRaw = WindLayerMode.hybrid.rawValue
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -37,11 +39,12 @@ struct MapTabView: View {
                         viewModel.regionSettled(
                             context.region,
                             favorites: store.favoriteMapSpots,
-                            offsetHours: offsetHours
+                            offsetHours: offsetHours,
+                            windLayerMode: windLayerMode
                         )
                     }
 
-                if showWind, let field = viewModel.windField {
+                if showWind, windLayerMode.showsModeledWind, let field = viewModel.windField {
                     WindColorOverlay(field: field, region: visibleRegion)
                     if windDisplayMode != .colorOnly {
                         WindOverlay(
@@ -58,24 +61,41 @@ struct MapTabView: View {
                 chrome
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                ForecastTimelineBar(offsetHours: $offsetHours, validAt: viewModel.windField?.validAt)
+                if showWind, windLayerMode.showsModeledWind {
+                    ForecastTimelineBar(offsetHours: $offsetHours, validAt: viewModel.windField?.validAt)
+                } else if showWind, windLayerMode.showsObservations {
+                    observationStatusBar
+                }
             }
         }
         .sheet(item: $selectedSpot) { SpotDetailSheet(spot: $0).environmentObject(store) }
+        .sheet(item: $selectedWindObservation) { WindObservationDetailSheet(observation: $0) }
         .sheet(isPresented: $showsLaunchList) { LaunchesView().environmentObject(store) }
         .sheet(isPresented: $showsMapSettings) {
             MapLayerSettingsSheet(
                 showWind: $showWind,
+                windLayerMode: windLayerModeBinding,
                 windMode: windDisplayModeBinding,
                 satellite: $satellite
             )
         }
         .onAppear {
-            viewModel.regionSettled(visibleRegion, favorites: store.favoriteMapSpots, offsetHours: offsetHours)
+            viewModel.regionSettled(
+                visibleRegion,
+                favorites: store.favoriteMapSpots,
+                offsetHours: offsetHours,
+                windLayerMode: windLayerMode
+            )
             centerOnUserIfPossible()
         }
         .onChange(of: store.currentCoordinate?.latitude) { _, _ in centerOnUserIfPossible() }
-        .onChange(of: offsetHours) { _, value in viewModel.refreshWind(offsetHours: value) }
+        .onChange(of: offsetHours) { _, value in
+            viewModel.refreshWind(offsetHours: value, windLayerMode: windLayerMode)
+        }
+        .onChange(of: windLayerModeRaw) { _, _ in
+            if !windLayerMode.showsModeledWind { offsetHours = 0 }
+            viewModel.refreshWindLayer(windLayerMode: windLayerMode, offsetHours: offsetHours)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
             lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
@@ -112,16 +132,36 @@ struct MapTabView: View {
                 .position(x: point.x, y: point.y - 22)
             }
         }
+
+        if showWind, windLayerMode.showsObservations, offsetHours == 0 {
+            ForEach(viewModel.windObservations) { observation in
+                if let point = proxy.convert(observation.coordinate, to: .local) {
+                    Button {
+                        selectedWindObservation = observation
+                    } label: {
+                        WindObservationPinView(observation: observation)
+                    }
+                    .buttonStyle(.plain)
+                    .position(x: point.x, y: point.y)
+                }
+            }
+        }
     }
 
     private var chrome: some View {
         VStack(spacing: 0) {
-            if showWind { WindLegendView() }
+            if showWind, windLayerMode.showsModeledWind {
+                WindLegendView(sourceLabel: windLegendSource)
+            }
 
             HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 10) {
                     searchBar
-                    MapFilterBar(filter: $filter, favoritesOnly: $favoritesOnly)
+                    MapFilterBar(
+                        filter: $filter,
+                        favoritesOnly: $favoritesOnly,
+                        windLayerMode: windLayerModeBinding
+                    )
                 }
                 Spacer(minLength: 0)
                 mapButtons
@@ -150,7 +190,7 @@ struct MapTabView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)
                     .background(.regularMaterial, in: Capsule())
-            } else if viewModel.isLoadingSpots || viewModel.isLoadingWind {
+            } else if viewModel.isLoadingMapData {
                 ProgressView()
                     .padding(9)
                     .background(.regularMaterial, in: Circle())
@@ -262,6 +302,47 @@ struct MapTabView: View {
             get: { windDisplayMode },
             set: { windDisplayModeRaw = $0.rawValue }
         )
+    }
+
+    private var windLayerMode: WindLayerMode {
+        WindLayerMode(rawValue: windLayerModeRaw) ?? .hybrid
+    }
+
+    private var windLayerModeBinding: Binding<WindLayerMode> {
+        Binding(
+            get: { windLayerMode },
+            set: { windLayerModeRaw = $0.rawValue }
+        )
+    }
+
+    private var windLegendSource: String {
+        if windLayerMode == .hybrid, offsetHours == 0 {
+            return "Hybrid · \(viewModel.windObservations.count) NOAA"
+        }
+        return "Modeled surface · 10 m"
+    }
+
+    private var observationStatusBar: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("MEASURED WIND")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Color.oceanBlue)
+                Text(viewModel.windObservations.isEmpty
+                     ? "No NOAA stations in this view"
+                     : "\(viewModel.windObservations.count) NOAA stations")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.deepNavy)
+            }
+            Spacer()
+            Label("Current", systemImage: "dot.radiowaves.left.and.right")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.deepNavy)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.regularMaterial)
+        .overlay(alignment: .top) { Divider() }
     }
 
     private func centerOnUser(force: Bool) {

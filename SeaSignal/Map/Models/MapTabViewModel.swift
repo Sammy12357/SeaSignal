@@ -5,31 +5,54 @@ import MapKit
 final class MapTabViewModel: ObservableObject {
     @Published private(set) var spots: [MapSpot] = []
     @Published private(set) var windField: WindField?
+    @Published private(set) var windObservations: [WindObservation] = []
     @Published private(set) var isLoadingSpots = false
     @Published private(set) var isLoadingWind = false
+    @Published private(set) var isLoadingObservations = false
     @Published private(set) var spotStatusMessage: String?
     @Published private(set) var windStatusMessage: String?
+    @Published private(set) var observationStatusMessage: String?
     @Published private(set) var lastUpdated: Date?
 
-    var statusMessage: String? { windStatusMessage ?? spotStatusMessage }
+    var statusMessage: String? { windStatusMessage ?? observationStatusMessage ?? spotStatusMessage }
+    var isLoadingMapData: Bool { isLoadingSpots || isLoadingWind || isLoadingObservations }
 
     private let overpass = OverpassProvider()
     private let windProvider = WindGridProvider()
+    private let observationProvider = NOAAWindObservationProvider()
     private let throttler = RegionThrottler()
     private var lastRegion: MKCoordinateRegion?
     private var spotTask: Task<Void, Never>?
     private var windTask: Task<Void, Never>?
+    private var observationTask: Task<Void, Never>?
 
-    func regionSettled(_ region: MKCoordinateRegion, favorites: [MapSpot], offsetHours: Int) {
+    func regionSettled(
+        _ region: MKCoordinateRegion,
+        favorites: [MapSpot],
+        offsetHours: Int,
+        windLayerMode: WindLayerMode
+    ) {
         lastRegion = region
         throttler.submit(region) { [weak self] region in
-            self?.load(region: region, favorites: favorites, offsetHours: offsetHours)
+            self?.load(
+                region: region,
+                favorites: favorites,
+                offsetHours: offsetHours,
+                windLayerMode: windLayerMode
+            )
         }
     }
 
-    func refreshWind(offsetHours: Int) {
+    func refreshWind(offsetHours: Int, windLayerMode: WindLayerMode) {
         guard let lastRegion else { return }
-        loadWind(region: lastRegion, offsetHours: offsetHours)
+        if windLayerMode.showsModeledWind {
+            loadWind(region: lastRegion, offsetHours: offsetHours)
+        }
+    }
+
+    func refreshWindLayer(windLayerMode: WindLayerMode, offsetHours: Int) {
+        guard let lastRegion else { return }
+        configureWindLayers(region: lastRegion, offsetHours: offsetHours, windLayerMode: windLayerMode)
     }
 
     func displayItems(filter: SpotFilter, favoritesOnly: Bool, favorites: [MapSpot], region: MKCoordinateRegion) -> [MapDisplayItem] {
@@ -70,9 +93,38 @@ final class MapTabViewModel: ObservableObject {
         favorites + discovered.filter { !favorites.containsNear($0) }
     }
 
-    private func load(region: MKCoordinateRegion, favorites: [MapSpot], offsetHours: Int) {
+    private func load(
+        region: MKCoordinateRegion,
+        favorites: [MapSpot],
+        offsetHours: Int,
+        windLayerMode: WindLayerMode
+    ) {
         loadSpots(region: region, favorites: favorites)
-        loadWind(region: region, offsetHours: offsetHours)
+        configureWindLayers(region: region, offsetHours: offsetHours, windLayerMode: windLayerMode)
+    }
+
+    private func configureWindLayers(
+        region: MKCoordinateRegion,
+        offsetHours: Int,
+        windLayerMode: WindLayerMode
+    ) {
+        if windLayerMode.showsModeledWind {
+            loadWind(region: region, offsetHours: offsetHours)
+        } else {
+            windTask?.cancel()
+            windField = nil
+            windStatusMessage = nil
+            isLoadingWind = false
+        }
+
+        if windLayerMode.showsObservations {
+            loadObservations(region: region)
+        } else {
+            observationTask?.cancel()
+            windObservations = []
+            observationStatusMessage = nil
+            isLoadingObservations = false
+        }
     }
 
     private func loadSpots(region: MKCoordinateRegion, favorites: [MapSpot]) {
@@ -117,6 +169,32 @@ final class MapTabViewModel: ObservableObject {
                 windStatusMessage = "Wind forecast is temporarily unavailable"
             }
             isLoadingWind = false
+        }
+    }
+
+    private func loadObservations(region: MKCoordinateRegion) {
+        observationTask?.cancel()
+        guard region.span.latitudeDelta <= 18, region.span.longitudeDelta <= 18 else {
+            windObservations = []
+            observationStatusMessage = "Zoom in to see NOAA wind stations"
+            isLoadingObservations = false
+            return
+        }
+
+        isLoadingObservations = true
+        observationTask = Task {
+            do {
+                let snapshot = try await observationProvider.fetch(in: region)
+                guard !Task.isCancelled else { return }
+                windObservations = snapshot.observations
+                observationStatusMessage = snapshot.isStale ? "Offline — showing saved NOAA observations" : nil
+                lastUpdated = snapshot.fetchedAt
+            } catch {
+                guard !Task.isCancelled else { return }
+                windObservations = []
+                observationStatusMessage = "NOAA station observations are temporarily unavailable"
+            }
+            isLoadingObservations = false
         }
     }
 }

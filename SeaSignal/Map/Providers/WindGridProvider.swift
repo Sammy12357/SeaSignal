@@ -4,7 +4,14 @@ import MapKit
 struct OpenMeteoWindLocation: Decodable {
     let latitude: Double
     let longitude: Double
+    let current: Current?
     let hourly: Hourly
+
+    struct Current: Decodable {
+        let time: String
+        let wind_speed_10m: Double?
+        let wind_direction_10m: Double?
+    }
 
     struct Hourly: Decodable {
         let time: [String]
@@ -36,7 +43,8 @@ struct WindGridProvider: Sendable {
                 region: region,
                 rows: rows,
                 columns: columns,
-                targetDate: Calendar.current.date(byAdding: .hour, value: offsetHours, to: Date()) ?? Date()
+                targetDate: Calendar.current.date(byAdding: .hour, value: offsetHours, to: Date()) ?? Date(),
+                preferCurrent: offsetHours == 0
             )
             await MapDiskCache.shared.store(wind: field, for: region, offsetHours: offsetHours)
             return field
@@ -53,7 +61,8 @@ struct WindGridProvider: Sendable {
         region: MKCoordinateRegion,
         rows: Int,
         columns: Int,
-        targetDate: Date
+        targetDate: Date,
+        preferCurrent: Bool = false
     ) throws -> WindField {
         let decoder = JSONDecoder()
         let locations: [OpenMeteoWindLocation]
@@ -75,19 +84,36 @@ struct WindGridProvider: Sendable {
         var speed: [Double] = []
         var validDates: [Date] = []
         for location in locations {
-            let dates = location.hourly.time.compactMap(formatter.date)
-            guard let index = dates.indices.min(by: {
-                abs(dates[$0].timeIntervalSince(targetDate)) < abs(dates[$1].timeIntervalSince(targetDate))
-            }),
-            let speedValue = location.hourly.wind_speed_10m[safe: index] ?? nil,
-            let direction = location.hourly.wind_direction_10m[safe: index] ?? nil else {
-                throw WindGridError.missingWindValue
+            let speedValue: Double
+            let direction: Double
+            let validDate: Date
+
+            if preferCurrent,
+               let current = location.current,
+               let currentDate = formatter.date(from: current.time),
+               let currentSpeed = current.wind_speed_10m,
+               let currentDirection = current.wind_direction_10m {
+                speedValue = currentSpeed
+                direction = currentDirection
+                validDate = currentDate
+            } else {
+                let dates = location.hourly.time.compactMap(formatter.date)
+                guard let index = dates.indices.min(by: {
+                    abs(dates[$0].timeIntervalSince(targetDate)) < abs(dates[$1].timeIntervalSince(targetDate))
+                }),
+                let hourlySpeed = location.hourly.wind_speed_10m[safe: index] ?? nil,
+                let hourlyDirection = location.hourly.wind_direction_10m[safe: index] ?? nil else {
+                    throw WindGridError.missingWindValue
+                }
+                speedValue = hourlySpeed
+                direction = hourlyDirection
+                validDate = dates[index]
             }
             let sample = WindSample(speedKnots: speedValue, directionDegrees: direction)
             u.append(sample.u)
             v.append(sample.v)
             speed.append(speedValue)
-            validDates.append(dates[index])
+            validDates.append(validDate)
         }
 
         let box = GeoMath.boundingBox(region)
@@ -123,6 +149,7 @@ struct WindGridProvider: Sendable {
         components.queryItems = [
             URLQueryItem(name: "latitude", value: latitudes.joined(separator: ",")),
             URLQueryItem(name: "longitude", value: longitudes.joined(separator: ",")),
+            URLQueryItem(name: "current", value: "wind_speed_10m,wind_direction_10m"),
             URLQueryItem(name: "hourly", value: "wind_speed_10m,wind_direction_10m"),
             URLQueryItem(name: "wind_speed_unit", value: "kn"),
             URLQueryItem(name: "timezone", value: "GMT"),

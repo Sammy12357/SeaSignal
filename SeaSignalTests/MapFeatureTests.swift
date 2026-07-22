@@ -57,6 +57,45 @@ final class MapFeatureTests: XCTestCase {
         XCTAssertEqual(field.columns, 2)
     }
 
+    func testNOAAObservationDecoderConvertsUnitsAndSkipsMissingWind() throws {
+        let text = """
+        #STN LAT LON YYYY MM DD hh mm WDIR WSPD GST
+        SAPF1 27.761 -82.627 2026 07 21 23 18 200 9.3 10.8
+        BAD01 27.800 -82.700 2026 07 21 23 00 MM MM MM
+        """
+
+        let observations = try NOAAWindObservationProvider.decodeObservations(
+            Data(text.utf8),
+            stationNames: ["SAPF1": "St. Petersburg, FL"]
+        )
+
+        let observation = try XCTUnwrap(observations.first)
+        XCTAssertEqual(observations.count, 1)
+        XCTAssertEqual(observation.stationName, "St. Petersburg, FL")
+        XCTAssertEqual(observation.speedKnots, 18.08, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(observation.gustKnots), 20.99, accuracy: 0.01)
+        XCTAssertEqual(observation.directionDegrees, 200)
+        XCTAssertEqual(observation.compassDirection, "S")
+    }
+
+    func testNOAAStationMetadataDecoder() {
+        let xml = """
+        <?xml version="1.0" encoding="utf-8"?>
+        <stations><station id="sapf1" lat="27.761" lon="-82.627" name="St. Petersburg, FL" met="y"/></stations>
+        """
+
+        let names = NOAAWindObservationProvider.decodeStationNames(Data(xml.utf8))
+
+        XCTAssertEqual(names["SAPF1"], "St. Petersburg, FL")
+    }
+
+    func testHybridWindModeCombinesModeledAndObservedData() {
+        XCTAssertTrue(WindLayerMode.hybrid.showsModeledWind)
+        XCTAssertTrue(WindLayerMode.hybrid.showsObservations)
+        XCTAssertFalse(WindLayerMode.modeled.showsObservations)
+        XCTAssertFalse(WindLayerMode.observations.showsModeledWind)
+    }
+
     func testFavoriteWinsWhenMergingNearbyDiscovery() {
         let favorite = MapSpot(id: "favorite:1", name: "My Ramp", latitude: 28, longitude: -82.5, kind: .ramp)
         let duplicate = MapSpot(id: "osm:node:1", name: "Public boat ramp", latitude: 28.0001, longitude: -82.5, kind: .ramp)

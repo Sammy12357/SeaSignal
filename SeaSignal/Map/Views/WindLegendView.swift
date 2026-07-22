@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct WindLegendView: View {
+    let sourceLabel: String
+
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
@@ -9,7 +11,7 @@ struct WindLegendView: View {
                 Text("knots")
                     .font(.caption2)
                 Spacer()
-                Text("Surface wind · 10 m")
+                Text(sourceLabel)
                     .font(.caption2)
             }
             .padding(.horizontal, 12)
