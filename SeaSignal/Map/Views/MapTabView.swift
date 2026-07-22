@@ -92,10 +92,6 @@ struct MapTabView: View {
         .onChange(of: offsetHours) { _, value in
             viewModel.refreshWind(offsetHours: value, windLayerMode: windLayerMode)
         }
-        .onChange(of: windLayerModeRaw) { _, _ in
-            if !windLayerMode.showsModeledWind { offsetHours = 0 }
-            viewModel.refreshWindLayer(windLayerMode: windLayerMode, offsetHours: offsetHours)
-        }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
             lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
@@ -104,6 +100,18 @@ struct MapTabView: View {
     private var baseMap: some View {
         Map(position: $position, interactionModes: .all) {
             UserAnnotation()
+            if showWind, windLayerMode.showsObservations, offsetHours == 0 {
+                ForEach(viewModel.windObservations) { observation in
+                    Annotation("", coordinate: observation.coordinate, anchor: .center) {
+                        Button {
+                            selectedWindObservation = observation
+                        } label: {
+                            WindObservationPinView(observation: observation)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
         }
         .mapControls { MapCompass(); MapScaleView() }
     }
@@ -133,19 +141,6 @@ struct MapTabView: View {
             }
         }
 
-        if showWind, windLayerMode.showsObservations, offsetHours == 0 {
-            ForEach(viewModel.windObservations) { observation in
-                if let point = proxy.convert(observation.coordinate, to: .local) {
-                    Button {
-                        selectedWindObservation = observation
-                    } label: {
-                        WindObservationPinView(observation: observation)
-                    }
-                    .buttonStyle(.plain)
-                    .position(x: point.x, y: point.y)
-                }
-            }
-        }
     }
 
     private var chrome: some View {
@@ -240,6 +235,8 @@ struct MapTabView: View {
             controlButton(icon: "location.fill", label: "My location") { centerOnUser(force: true) }
             controlButton(icon: "map.fill", label: "Map settings") { showsMapSettings = true }
             controlButton(icon: "list.bullet", label: "Launch list") { showsLaunchList = true }
+            controlButton(icon: "plus.magnifyingglass", label: "Zoom in") { zoomMap(by: 0.58) }
+            controlButton(icon: "minus.magnifyingglass", label: "Zoom out") { zoomMap(by: 1.72) }
         }
     }
 
@@ -311,8 +308,16 @@ struct MapTabView: View {
     private var windLayerModeBinding: Binding<WindLayerMode> {
         Binding(
             get: { windLayerMode },
-            set: { windLayerModeRaw = $0.rawValue }
+            set: { setWindLayerMode($0) }
         )
+    }
+
+    private func setWindLayerMode(_ mode: WindLayerMode) {
+        guard mode != windLayerMode else { return }
+        showWind = true
+        windLayerModeRaw = mode.rawValue
+        if !mode.showsModeledWind { offsetHours = 0 }
+        viewModel.refreshWindLayer(windLayerMode: mode, offsetHours: offsetHours)
     }
 
     private var windLegendSource: String {
@@ -356,6 +361,14 @@ struct MapTabView: View {
                 center: coordinate,
                 span: MKCoordinateSpan(latitudeDelta: 0.42, longitudeDelta: 0.42)
             ))
+        }
+    }
+
+    private func zoomMap(by scale: Double) {
+        let region = GeoMath.zoomedRegion(visibleRegion, scale: scale)
+        visibleRegion = region
+        withAnimation(.easeInOut(duration: 0.25)) {
+            position = .region(region)
         }
     }
 }

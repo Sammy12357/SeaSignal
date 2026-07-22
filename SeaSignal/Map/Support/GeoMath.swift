@@ -23,4 +23,15 @@ enum GeoMath {
         return coordinate.latitude >= box.south && coordinate.latitude <= box.north
             && coordinate.longitude >= box.west && coordinate.longitude <= box.east
     }
+
+    static func zoomedRegion(_ region: MKCoordinateRegion, scale: Double) -> MKCoordinateRegion {
+        let safeScale = max(scale, 0.01)
+        return MKCoordinateRegion(
+            center: region.center,
+            span: MKCoordinateSpan(
+                latitudeDelta: min(120, max(0.002, region.span.latitudeDelta * safeScale)),
+                longitudeDelta: min(180, max(0.002, region.span.longitudeDelta * safeScale))
+            )
+        )
+    }
 }

@@ -96,6 +96,23 @@ final class MapFeatureTests: XCTestCase {
         XCTAssertFalse(WindLayerMode.observations.showsModeledWind)
     }
 
+    func testMapZoomPreservesCenterAndScalesSpan() {
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 27.95, longitude: -82.46),
+            span: MKCoordinateSpan(latitudeDelta: 1, longitudeDelta: 0.8)
+        )
+
+        let zoomedIn = GeoMath.zoomedRegion(region, scale: 0.5)
+        let zoomedOut = GeoMath.zoomedRegion(region, scale: 2)
+
+        XCTAssertEqual(zoomedIn.center.latitude, region.center.latitude)
+        XCTAssertEqual(zoomedIn.center.longitude, region.center.longitude)
+        XCTAssertEqual(zoomedIn.span.latitudeDelta, 0.5)
+        XCTAssertEqual(zoomedIn.span.longitudeDelta, 0.4)
+        XCTAssertEqual(zoomedOut.span.latitudeDelta, 2)
+        XCTAssertEqual(zoomedOut.span.longitudeDelta, 1.6)
+    }
+
     func testFavoriteWinsWhenMergingNearbyDiscovery() {
         let favorite = MapSpot(id: "favorite:1", name: "My Ramp", latitude: 28, longitude: -82.5, kind: .ramp)
         let duplicate = MapSpot(id: "osm:node:1", name: "Public boat ramp", latitude: 28.0001, longitude: -82.5, kind: .ramp)
