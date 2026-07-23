@@ -3,7 +3,13 @@ import Foundation
 
 enum SpotKind: String, Codable, Hashable, Sendable, CaseIterable {
     case ramp
+
+    /// Retained for decoding legacy cached and favourited data only. Piers are no longer
+    /// ingested by any provider and are filtered out before display. Do NOT delete this
+    /// case: `MapSpot` is `Codable` and persisted by `MapDiskCache`, so removing it would
+    /// break decoding of data written by earlier builds.
     case pier
+
     case weatherSpot
 
     var glyph: String {
@@ -78,7 +84,6 @@ enum MapDisplayItem: Identifiable, Hashable {
 enum SpotFilter: String, CaseIterable, Identifiable {
     case all
     case ramps
-    case piers
     case weatherSpots
     case marineStations
     case airports
@@ -88,7 +93,6 @@ enum SpotFilter: String, CaseIterable, Identifiable {
         switch self {
         case .all: "All"
         case .ramps: "Boat ramps"
-        case .piers: "Piers"
         case .weatherSpots: "Weather spots"
         case .marineStations: "Marine stations"
         case .airports: "Airports"
@@ -99,7 +103,6 @@ enum SpotFilter: String, CaseIterable, Identifiable {
         switch self {
         case .all: true
         case .ramps: spot.kind == .ramp
-        case .piers: spot.kind == .pier
         case .weatherSpots: spot.kind == .weatherSpot
         case .marineStations, .airports: false
         }

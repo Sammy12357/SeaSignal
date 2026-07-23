@@ -20,6 +20,13 @@ final class MapTabViewModel: ObservableObject {
     var isLoadingMapData: Bool { isLoadingSpots || isLoadingWind || isLoadingObservations || isLoadingAirports }
     @Published private(set) var isLoadingAirports = false
 
+    /// Clustering is a last-resort guard for continental-scale views only. At any zoom a
+    /// boater would realistically use, every spot renders as an individual pin. Raise these
+    /// values if clusters ever reappear at a usable scale; lower `clusterCountThreshold`
+    /// (not the span) if dense regions start dropping frames.
+    private static let clusterSpanThreshold: Double = 2.0
+    private static let clusterCountThreshold: Int = 400
+
     private let overpass = OverpassProvider()
     private let windProvider = WindGridProvider()
     private let observationProvider = NOAAWindObservationProvider()
@@ -61,11 +68,18 @@ final class MapTabViewModel: ObservableObject {
     }
 
     func displayItems(filter: SpotFilter, favoritesOnly: Bool, favorites: [MapSpot], region: MKCoordinateRegion) -> [MapDisplayItem] {
-        let merged = Self.merge(discovered: spots, favorites: favorites)
+        let merged = SpotDeduplicator.deduplicate(
+            Self.merge(discovered: spots, favorites: favorites),
+            isFavorite: { favorites.containsNear($0) }
+        )
+            // Piers are no longer ingested, but older builds may have cached or favourited
+            // them. Drop them here so they disappear without breaking `Codable` decode.
+            .filter { $0.kind != .pier }
             .filter(filter.matches)
             .filter { !favoritesOnly || favorites.containsNear($0) }
             .filter { GeoMath.contains(region, coordinate: $0.coordinate) }
-        guard region.span.latitudeDelta > 0.18 || merged.count > 70 else {
+        guard region.span.latitudeDelta > Self.clusterSpanThreshold
+            || merged.count > Self.clusterCountThreshold else {
             return merged.map(MapDisplayItem.spot)
         }
 
