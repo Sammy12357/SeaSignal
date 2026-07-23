@@ -1,0 +1,26 @@
+{
+  "version": 0.6,
+  "elements": [
+    {
+      "type": "node",
+      "id": 101,
+      "lat": 27.889,
+      "lon": -82.481,
+      "tags": {
+        "leisure": "slipway",
+        "name": "Ballast Point Ramp"
+      }
+    },
+    {
+      "type": "way",
+      "id": 202,
+      "center": {
+        "lat": 27.947,
+        "lon": -82.457
+      },
+      "tags": {
+        "man_made": "pier"
+      }
+    }
+  ]
+}

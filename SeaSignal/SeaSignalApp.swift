@@ -6,7 +6,10 @@ struct SeaSignalApp: App {
         WindowGroup {
             ContentView()
                 .tint(.oceanBlue)
+                .preferredColorScheme(.light)
+        }
+        .backgroundTask(.appRefresh(WeeklyNotificationService.backgroundIdentifier)) {
+            await BackgroundForecastRefresh.run()
         }
     }
 }
-
