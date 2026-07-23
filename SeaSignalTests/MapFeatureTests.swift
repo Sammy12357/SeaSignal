@@ -114,11 +114,11 @@ final class MapFeatureTests: XCTestCase {
     }
 
     func testForecastTimelineClampsAndStopsAtBounds() {
-        XCTAssertEqual(ForecastTimeline.clamped(-9), -6)
-        XCTAssertEqual(ForecastTimeline.clamped(75), 72)
-        XCTAssertEqual(ForecastTimeline.nextOffset(after: -6), -3)
-        XCTAssertEqual(ForecastTimeline.nextOffset(after: 69), 72)
-        XCTAssertNil(ForecastTimeline.nextOffset(after: 72))
+        XCTAssertEqual(ForecastPlaybackRange.clamped(-9), -6)
+        XCTAssertEqual(ForecastPlaybackRange.clamped(75), 72)
+        XCTAssertEqual(ForecastPlaybackRange.nextOffset(after: -6), -3)
+        XCTAssertEqual(ForecastPlaybackRange.nextOffset(after: 69), 72)
+        XCTAssertNil(ForecastPlaybackRange.nextOffset(after: 72))
     }
 
     func testFavoriteWinsWhenMergingNearbyDiscovery() {

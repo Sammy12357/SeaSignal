@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum ForecastTimeline {
+enum ForecastPlaybackRange {
     static let minimumOffset = -6
     static let maximumOffset = 72
     static let step = 3
@@ -38,8 +38,8 @@ struct ForecastTimelineBar: View {
                 }
                 Spacer()
                 playbackButton
-                stepButton(hours: -ForecastTimeline.step, icon: "chevron.left", title: "−3h")
-                stepButton(hours: ForecastTimeline.step, icon: "chevron.right", title: "+3h", iconAfter: true)
+                stepButton(hours: -ForecastPlaybackRange.step, icon: "chevron.left", title: "−3h")
+                stepButton(hours: ForecastPlaybackRange.step, icon: "chevron.right", title: "+3h", iconAfter: true)
             }
 
             Slider(
@@ -47,11 +47,11 @@ struct ForecastTimelineBar: View {
                     get: { Double(offsetHours) },
                     set: {
                         isPlaying = false
-                        offsetHours = ForecastTimeline.clamped(Int($0 / Double(ForecastTimeline.step)) * ForecastTimeline.step)
+                        offsetHours = ForecastPlaybackRange.clamped(Int($0 / Double(ForecastPlaybackRange.step)) * ForecastPlaybackRange.step)
                     }
                 ),
-                in: Double(ForecastTimeline.minimumOffset)...Double(ForecastTimeline.maximumOffset),
-                step: Double(ForecastTimeline.step)
+                in: Double(ForecastPlaybackRange.minimumOffset)...Double(ForecastPlaybackRange.maximumOffset),
+                step: Double(ForecastPlaybackRange.step)
             )
             .tint(.oceanBlue)
             .accessibilityLabel("Forecast time")
@@ -66,7 +66,7 @@ struct ForecastTimelineBar: View {
             while !Task.isCancelled, isPlaying {
                 try? await Task.sleep(for: .seconds(1.4))
                 guard !Task.isCancelled, isPlaying else { return }
-                guard let next = ForecastTimeline.nextOffset(after: offsetHours) else {
+                guard let next = ForecastPlaybackRange.nextOffset(after: offsetHours) else {
                     isPlaying = false
                     return
                 }
@@ -83,7 +83,7 @@ struct ForecastTimelineBar: View {
 
     private var playbackButton: some View {
         Button {
-            if offsetHours >= ForecastTimeline.maximumOffset {
+            if offsetHours >= ForecastPlaybackRange.maximumOffset {
                 offsetHours = 0
             }
             isPlaying.toggle()
@@ -103,7 +103,7 @@ struct ForecastTimelineBar: View {
     private func stepButton(hours: Int, icon: String, title: String, iconAfter: Bool = false) -> some View {
         Button {
             isPlaying = false
-            offsetHours = ForecastTimeline.clamped(offsetHours + hours)
+            offsetHours = ForecastPlaybackRange.clamped(offsetHours + hours)
         } label: {
             HStack(spacing: 5) {
                 if !iconAfter { Image(systemName: icon) }
@@ -117,6 +117,6 @@ struct ForecastTimelineBar: View {
             .background(.white.opacity(0.92), in: RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
-        .disabled(hours < 0 ? offsetHours <= ForecastTimeline.minimumOffset : offsetHours >= ForecastTimeline.maximumOffset)
+        .disabled(hours < 0 ? offsetHours <= ForecastPlaybackRange.minimumOffset : offsetHours >= ForecastPlaybackRange.maximumOffset)
     }
 }
