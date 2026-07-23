@@ -34,7 +34,7 @@ struct WindOverlay: View {
 
     var body: some View {
         TimelineView(.animation(minimumInterval: lowPowerMode ? 1.0 / 15.0 : 1.0 / 24.0, paused: isPaused)) { timeline in
-            Canvas { context, size in
+            Canvas(rendersAsynchronously: true) { context, size in
                 let time = timeline.date.timeIntervalSinceReferenceDate
                 let normalCount = mode == .movingArrows ? 140 : normalParticles.count
                 let count = lowPowerMode ? min(normalCount, mode == .movingArrows ? 60 : 140) : normalCount
