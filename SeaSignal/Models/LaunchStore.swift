@@ -46,7 +46,7 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
                 name: $0.name,
                 latitude: $0.latitude,
                 longitude: $0.longitude,
-                kind: .ramp
+                kind: $0.location == SpotKind.pier.label ? .pier : .ramp
             )
         }
     }
@@ -272,7 +272,10 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationStatus = manager.authorizationStatus
         if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
+            errorMessage = nil
             manager.requestLocation()
+        } else if manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted {
+            errorMessage = "Location access is off. Enable it in Settings or search for a ramp manually."
         }
     }
 

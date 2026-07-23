@@ -90,6 +90,7 @@ struct WindField: Codable, Hashable, Sendable {
     let validAt: Date
     let fetchedAt: Date
     let isStale: Bool
+    var landMask: [Double]? = nil
 
     func sample(at coordinate: CLLocationCoordinate2D) -> (u: Double, v: Double, speed: Double)? {
         guard columns > 1, rows > 1, maxLongitude > minLongitude, maxLatitude > minLatitude else { return nil }
@@ -114,6 +115,29 @@ struct WindField: Codable, Hashable, Sendable {
             latitude: min(max(coordinate.latitude, minLatitude), maxLatitude),
             longitude: min(max(coordinate.longitude, minLongitude), maxLongitude)
         ))
+    }
+
+    func isWater(at coordinate: CLLocationCoordinate2D) -> Bool {
+        guard let landMask, landMask.count == rows * columns,
+              columns > 1, rows > 1,
+              maxLongitude > minLongitude, maxLatitude > minLatitude else {
+            return true
+        }
+
+        let clampedLatitude = min(max(coordinate.latitude, minLatitude), maxLatitude)
+        let clampedLongitude = min(max(coordinate.longitude, minLongitude), maxLongitude)
+        let x = (clampedLongitude - minLongitude) / (maxLongitude - minLongitude) * Double(columns - 1)
+        let y = (clampedLatitude - minLatitude) / (maxLatitude - minLatitude) * Double(rows - 1)
+        let x0 = Int(x.rounded(.down)), y0 = Int(y.rounded(.down))
+        let x1 = min(x0 + 1, columns - 1), y1 = min(y0 + 1, rows - 1)
+        let tx = x - Double(x0), ty = y - Double(y0)
+        func value(_ row: Int, _ column: Int) -> Double { landMask[row * columns + column] }
+        let south = value(y0, x0) * (1 - tx) + value(y0, x1) * tx
+        let north = value(y1, x0) * (1 - tx) + value(y1, x1) * tx
+        let landFraction = south * (1 - ty) + north * ty
+        // Be conservative near shorelines: an overlay over open water is preferable
+        // to placing a wind glyph on a beach or a narrow strip of land.
+        return landFraction < 0.2
     }
 
     func coordinate(row: Int, column: Int) -> CLLocationCoordinate2D {

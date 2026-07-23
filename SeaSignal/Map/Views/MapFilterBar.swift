@@ -40,7 +40,7 @@ struct MapFilterBar: View {
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 11)
             .frame(height: 38)
-            .background(Color.white.opacity(0.94), in: Capsule())
+            .background(Color.cardBackground.opacity(0.94), in: Capsule())
             .overlay(Capsule().stroke(Color.deepNavy.opacity(0.1)))
     }
 
@@ -51,7 +51,7 @@ struct MapFilterBar: View {
                 .fixedSize(horizontal: true, vertical: false)
                 .padding(.horizontal, 11)
                 .frame(height: 38)
-                .background(active ? Color.oceanBlue.opacity(0.17) : Color.white.opacity(0.94), in: Capsule())
+                .background(active ? Color.oceanBlue.opacity(0.17) : Color.cardBackground.opacity(0.94), in: Capsule())
                 .overlay(Capsule().stroke(Color.deepNavy.opacity(0.1)))
         }
         .buttonStyle(.plain)
