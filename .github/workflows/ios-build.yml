@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -36,7 +36,11 @@ jobs:
           set -o pipefail
           DEVICE_ID="$(xcrun simctl list devices available -j | ruby -rjson -e '
             devices = JSON.parse(STDIN.read).fetch("devices", {})
-            device = devices.values.flatten.find { |item| item["isAvailable"] }
+            ios_devices = devices
+              .select { |runtime, _| runtime.include?("SimRuntime.iOS-") }
+              .values
+              .flatten
+            device = ios_devices.find { |item| item["isAvailable"] }
             print device["udid"] if device
           ')"
 
