@@ -25,6 +25,22 @@ final class MapFeatureTests: XCTestCase {
         XCTAssertEqual(clamped.speed, 20, accuracy: 0.001)
     }
 
+    func testWindFieldWaterMaskSeparatesLandAndWater() {
+        let field = WindField(
+            rows: 2, columns: 2,
+            minLatitude: 0, maxLatitude: 2,
+            minLongitude: 0, maxLongitude: 2,
+            u: [0, 0, 0, 0],
+            v: [0, 0, 0, 0],
+            speed: [5, 5, 5, 5],
+            validAt: Date(), fetchedAt: Date(), isStale: false,
+            landMask: [1, 1, 0, 0]
+        )
+
+        XCTAssertFalse(field.isWater(at: CLLocationCoordinate2D(latitude: 0, longitude: 1)))
+        XCTAssertTrue(field.isWater(at: CLLocationCoordinate2D(latitude: 2, longitude: 1)))
+    }
+
     func testOverpassDecodesNodeAndWayCenter() throws {
         let data = try fixture(named: "overpass_spots")
         let spots = try OverpassProvider.decode(data)

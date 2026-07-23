@@ -29,9 +29,10 @@ struct ConditionBadge: View {
 
 extension ShapeStyle where Self == Color {
     static var oceanBlue: Color { Color(red: 0.05, green: 0.36, blue: 0.57) }
-    static var deepNavy: Color { Color(red: 0.03, green: 0.15, blue: 0.24) }
+    static var deepNavy: Color { Color(uiColor: .label) }
     static var seaGreen: Color { Color(red: 0.05, green: 0.57, blue: 0.43) }
     static var warningOrange: Color { Color(red: 0.91, green: 0.52, blue: 0.12) }
     static var dangerRed: Color { Color(red: 0.84, green: 0.22, blue: 0.24) }
-    static var mist: Color { Color(red: 0.94, green: 0.97, blue: 0.98) }
+    static var mist: Color { Color(uiColor: .systemGroupedBackground) }
+    static var cardBackground: Color { Color(uiColor: .secondarySystemGroupedBackground) }
 }

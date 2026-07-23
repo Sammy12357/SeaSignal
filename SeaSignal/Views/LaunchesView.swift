@@ -25,7 +25,7 @@ struct LaunchesView: View {
                                     .font(.title3)
                                     .foregroundStyle(.oceanBlue)
                                     .frame(width: 46, height: 46)
-                                    .background(.white, in: Circle())
+                                    .background(.cardBackground, in: Circle())
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(store.isFavorite(launch) ? "Remove favorite" : "Add favorite")

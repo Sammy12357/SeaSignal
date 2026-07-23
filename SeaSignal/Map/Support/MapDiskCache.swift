@@ -101,7 +101,7 @@ actor MapDiskCache {
     }
 
     private func windKey(_ region: MKCoordinateRegion, offsetHours: Int) -> String {
-        "\(key(region))|\(offsetHours)"
+        "water-mask-v1|\(key(region))|\(offsetHours)"
     }
 
     private func persist<T: Encodable>(_ value: T, to url: URL) {

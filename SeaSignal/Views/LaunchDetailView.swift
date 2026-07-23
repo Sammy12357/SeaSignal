@@ -50,7 +50,7 @@ struct LaunchDetailView: View {
                     Text(displayedLaunch.summary).font(.subheadline).foregroundStyle(.secondary)
                 }
                 .padding(20)
-                .background(.white, in: RoundedRectangle(cornerRadius: 22))
+                .background(.cardBackground, in: RoundedRectangle(cornerRadius: 22))
 
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Conditions").font(.title3.bold()).foregroundStyle(.deepNavy)
@@ -107,6 +107,6 @@ struct LaunchDetailView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-        .background(.white, in: RoundedRectangle(cornerRadius: 16))
+        .background(.cardBackground, in: RoundedRectangle(cornerRadius: 16))
     }
 }

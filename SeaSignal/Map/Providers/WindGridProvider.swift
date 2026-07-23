@@ -4,6 +4,7 @@ import MapKit
 struct OpenMeteoWindLocation: Decodable {
     let latitude: Double
     let longitude: Double
+    let elevation: Double?
     let current: Current?
     let hourly: Hourly
 
@@ -82,6 +83,7 @@ struct WindGridProvider: Sendable {
         var u: [Double] = []
         var v: [Double] = []
         var speed: [Double] = []
+        var landMask: [Double] = []
         var validDates: [Date] = []
         for location in locations {
             let speedValue: Double
@@ -113,6 +115,7 @@ struct WindGridProvider: Sendable {
             u.append(sample.u)
             v.append(sample.v)
             speed.append(speedValue)
+            landMask.append((location.elevation ?? 0) > 0.5 ? 1 : 0)
             validDates.append(validDate)
         }
 
@@ -129,7 +132,8 @@ struct WindGridProvider: Sendable {
             speed: speed,
             validAt: validDates.first ?? targetDate,
             fetchedAt: Date(),
-            isStale: false
+            isStale: false,
+            landMask: landMask
         )
     }
 
@@ -173,7 +177,8 @@ private extension WindField {
             minLatitude: minLatitude, maxLatitude: maxLatitude,
             minLongitude: minLongitude, maxLongitude: maxLongitude,
             u: u, v: v, speed: speed,
-            validAt: validAt, fetchedAt: fetchedAt, isStale: true
+            validAt: validAt, fetchedAt: fetchedAt, isStale: true,
+            landMask: landMask
         )
     }
 }

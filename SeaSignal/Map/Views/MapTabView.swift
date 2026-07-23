@@ -34,7 +34,14 @@ struct MapTabView: View {
             ZStack {
                 baseMap
                     .mapAppearance(satellite: satellite)
+                    .id(satellite)
                     .ignoresSafeArea(edges: .top)
+                    .overlay {
+                        ZStack {
+                            windOverlays(proxy: proxy)
+                            markerOverlay(proxy: proxy)
+                        }
+                    }
                     .onMapCameraChange(frequency: .continuous) { context in
                         visibleRegion = context.region
                         viewModel.regionSettled(
@@ -45,20 +52,6 @@ struct MapTabView: View {
                         )
                     }
 
-                if showWind, windLayerMode.showsModeledWind, let field = viewModel.windField {
-                    WindColorOverlay(field: field, region: visibleRegion)
-                    if windDisplayMode != .colorOnly {
-                        WindOverlay(
-                            field: field,
-                            region: visibleRegion,
-                            mode: windDisplayMode,
-                            isPaused: scenePhase != .active || reduceMotion,
-                            lowPowerMode: lowPowerMode
-                        )
-                    }
-                }
-
-                markerOverlay(proxy: proxy)
                 chrome
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -95,6 +88,31 @@ struct MapTabView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
             lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    }
+
+    @ViewBuilder
+    private func windOverlays(proxy: MapProxy) -> some View {
+        if showWind, windLayerMode.showsModeledWind, let field = viewModel.windField {
+            ZStack {
+                WindColorOverlay(field: field, region: visibleRegion)
+                if windDisplayMode == .movingArrows {
+                    WindDirectionArrowOverlay(
+                        field: field,
+                        proxy: proxy,
+                        lowPowerMode: lowPowerMode
+                    )
+                } else if windDisplayMode == .particleAnimation {
+                    WindOverlay(
+                        field: field,
+                        region: visibleRegion,
+                        mode: windDisplayMode,
+                        isPaused: scenePhase != .active || reduceMotion,
+                        lowPowerMode: lowPowerMode
+                    )
+                }
+            }
         }
     }
 
@@ -236,8 +254,8 @@ struct MapTabView: View {
             controlButton(icon: "location.fill", label: "My location") { centerOnUser(force: true) }
             controlButton(icon: "map.fill", label: "Map settings") { showsMapSettings = true }
             controlButton(icon: "list.bullet", label: "Launch list") { showsLaunchList = true }
-            controlButton(icon: "plus.magnifyingglass", label: "Zoom in") { zoomMap(by: 0.58) }
-            controlButton(icon: "minus.magnifyingglass", label: "Zoom out") { zoomMap(by: 1.72) }
+            controlButton(icon: "plus.magnifyingglass", label: "Zoom in") { zoomMap(by: 0.78) }
+            controlButton(icon: "minus.magnifyingglass", label: "Zoom out") { zoomMap(by: 1.28) }
         }
     }
 

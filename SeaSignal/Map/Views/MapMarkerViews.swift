@@ -29,7 +29,7 @@ struct ClusterPinView: View {
             .font(.system(.body, design: .rounded, weight: .semibold))
             .foregroundStyle(Color.deepNavy)
             .frame(minWidth: 58, minHeight: 58)
-            .background(.white, in: Circle())
+            .background(.cardBackground, in: Circle())
             .overlay(Circle().stroke(Color.deepNavy.opacity(0.12)))
             .shadow(color: .black.opacity(0.22), radius: 4, y: 2)
             .accessibilityLabel("\(count) map locations")
@@ -53,7 +53,7 @@ struct WindObservationPinView: View {
         .foregroundStyle(Color.deepNavy)
         .padding(.horizontal, 9)
         .frame(height: 36)
-        .background(.white.opacity(0.96), in: Capsule())
+        .background(Color.cardBackground.opacity(0.96), in: Capsule())
         .overlay(Capsule().stroke(Color.oceanBlue, lineWidth: 2))
         .shadow(color: .black.opacity(0.22), radius: 4, y: 2)
         .accessibilityLabel(

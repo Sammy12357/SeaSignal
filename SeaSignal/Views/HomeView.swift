@@ -39,7 +39,7 @@ struct HomeView: View {
                 .buttonStyle(.borderedProminent)
         }
         .padding(24)
-        .background(.white, in: RoundedRectangle(cornerRadius: 20))
+        .background(.cardBackground, in: RoundedRectangle(cornerRadius: 20))
     }
 
     private var emptyFavorites: some View {
@@ -50,7 +50,7 @@ struct HomeView: View {
                 .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity).padding(30)
-        .background(.white, in: RoundedRectangle(cornerRadius: 20))
+        .background(.cardBackground, in: RoundedRectangle(cornerRadius: 20))
     }
 
     private var header: some View {
@@ -71,7 +71,7 @@ struct HomeView: View {
             Image(systemName: "bell.fill")
                 .foregroundStyle(.oceanBlue)
                 .frame(width: 44, height: 44)
-                .background(.white, in: Circle())
+                .background(.cardBackground, in: Circle())
         }
         .padding(.top, 12)
     }
@@ -196,7 +196,7 @@ struct LaunchCard: View {
             }
         }
         .padding(16)
-        .background(.white, in: RoundedRectangle(cornerRadius: 18))
+        .background(.cardBackground, in: RoundedRectangle(cornerRadius: 18))
     }
 
     private func timeBlock(title: String, time: String, icon: String) -> some View {

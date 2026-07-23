@@ -92,7 +92,7 @@ struct ForecastTimelineBar: View {
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(Color.deepNavy)
                 .frame(width: 42, height: 42)
-                .background(.white.opacity(0.92), in: RoundedRectangle(cornerRadius: 10))
+                .background(Color.cardBackground.opacity(0.92), in: RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
         .disabled(reduceMotion)
@@ -114,7 +114,7 @@ struct ForecastTimelineBar: View {
             .foregroundStyle(Color.deepNavy)
             .frame(height: 42)
             .padding(.horizontal, 8)
-            .background(.white.opacity(0.92), in: RoundedRectangle(cornerRadius: 10))
+            .background(Color.cardBackground.opacity(0.92), in: RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
         .disabled(hours < 0 ? offsetHours <= ForecastPlaybackRange.minimumOffset : offsetHours >= ForecastPlaybackRange.maximumOffset)
