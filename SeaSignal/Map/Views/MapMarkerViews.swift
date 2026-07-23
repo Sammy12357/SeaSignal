@@ -119,3 +119,88 @@ struct WindObservationDetailSheet: View {
         value.formatted(.number.precision(.fractionLength(1)))
     }
 }
+
+struct AirportObservationPinView: View {
+    let observation: AirportObservation
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "airplane")
+                .font(.caption.weight(.bold))
+            if let direction = observation.windDirectionDegrees {
+                Image(systemName: "arrow.up")
+                    .font(.caption2.weight(.black))
+                    .rotationEffect(.degrees(direction + 180))
+            }
+            Text(observation.windSpeedKnots.map { "\(Int($0.rounded())) kt" } ?? "METAR")
+                .font(.system(.caption, design: .rounded, weight: .bold))
+        }
+        .foregroundStyle(Color.deepNavy)
+        .padding(.horizontal, 9)
+        .frame(height: 34)
+        .background(.white.opacity(0.96), in: Capsule())
+        .overlay(Capsule().stroke(observation.isStale ? Color.warningOrange : Color.seaGreen, lineWidth: 2))
+        .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
+        .accessibilityLabel("\(observation.stationName), airport weather observation")
+    }
+}
+
+struct AirportObservationDetailSheet: View {
+    let observation: AirportObservation
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text(observation.stationName).font(.title3.bold())
+                    Text("Airport \(observation.stationID)")
+                        .foregroundStyle(.secondary)
+                }
+                Section("Land-based METAR") {
+                    if let speed = observation.windSpeedKnots {
+                        LabeledContent("Wind", value: "\(speed.formatted(.number.precision(.fractionLength(0)))) kt")
+                    }
+                    if let direction = observation.windDirectionDegrees {
+                        LabeledContent("Direction", value: "\(Int(direction.rounded()))°")
+                    } else {
+                        LabeledContent("Direction", value: "Variable or unavailable")
+                    }
+                    if let gust = observation.gustKnots {
+                        LabeledContent("Gust", value: "\(gust.formatted(.number.precision(.fractionLength(0)))) kt")
+                    }
+                    if let visibility = observation.visibilityMiles {
+                        LabeledContent("Visibility", value: "\(visibility.formatted()) mi")
+                    }
+                    if let temperature = observation.temperatureCelsius {
+                        LabeledContent("Temperature", value: "\(temperature.formatted()) °C")
+                    }
+                    if let dewpoint = observation.dewpointCelsius {
+                        LabeledContent("Dew point", value: "\(dewpoint.formatted()) °C")
+                    }
+                    LabeledContent("Observed") {
+                        Text(observation.observedAt.formatted(.dateTime.month(.abbreviated).day().hour().minute()))
+                            .foregroundStyle(observation.isStale ? Color.warningOrange : Color.primary)
+                    }
+                }
+                Section("Source and limitations") {
+                    Link("NOAA/NWS Aviation Weather Center", destination: URL(string: "https://aviationweather.gov/data/api/")!)
+                    Text("This is a land-based airport observation. It does not replace a marine observation over open water.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if let raw = observation.rawReport {
+                        Text(raw).font(.caption.monospaced()).textSelection(.enabled)
+                    }
+                }
+            }
+            .navigationTitle("Airport weather")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+}

@@ -18,6 +18,23 @@ enum GeoMath {
         )
     }
 
+    static func expandedRegion(_ region: MKCoordinateRegion, factor: Double) -> MKCoordinateRegion {
+        MKCoordinateRegion(
+            center: region.center,
+            span: MKCoordinateSpan(
+                latitudeDelta: min(180, region.span.latitudeDelta * max(factor, 1)),
+                longitudeDelta: min(360, region.span.longitudeDelta * max(factor, 1))
+            )
+        )
+    }
+
+    static func expandedBoundingBox(
+        _ region: MKCoordinateRegion,
+        factor: Double
+    ) -> (south: Double, west: Double, north: Double, east: Double) {
+        boundingBox(expandedRegion(region, factor: factor))
+    }
+
     static func contains(_ region: MKCoordinateRegion, coordinate: CLLocationCoordinate2D) -> Bool {
         let box = boundingBox(region)
         return coordinate.latitude >= box.south && coordinate.latitude <= box.north

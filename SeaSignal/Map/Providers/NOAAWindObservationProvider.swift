@@ -112,8 +112,9 @@ actor NOAAWindObservationProvider {
         in region: MKCoordinateRegion,
         isStale: Bool
     ) -> WindObservationSnapshot {
+        let expandedRegion = GeoMath.expandedRegion(region, factor: 1.35)
         let visible = observations
-            .filter { GeoMath.contains(region, coordinate: $0.coordinate) }
+            .filter { GeoMath.contains(expandedRegion, coordinate: $0.coordinate) }
             .sorted {
                 GeoMath.distance($0.coordinate, region.center) < GeoMath.distance($1.coordinate, region.center)
             }

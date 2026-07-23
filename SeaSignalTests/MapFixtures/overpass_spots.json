@@ -21,6 +21,31 @@
       "tags": {
         "man_made": "pier"
       }
+    },
+    {
+      "type": "way",
+      "id": 303,
+      "center": {
+        "lat": 27.91,
+        "lon": -82.51
+      },
+      "tags": {
+        "service": "slipway",
+        "name": "Trailer Ramp",
+        "fee": "yes",
+        "surface": "concrete"
+      }
+    },
+    {
+      "type": "node",
+      "id": 404,
+      "lat": 27.92,
+      "lon": -82.52,
+      "tags": {
+        "waterway": "access_point",
+        "name": "Kayak Put-in",
+        "canoe": "yes"
+      }
     }
   ]
 }

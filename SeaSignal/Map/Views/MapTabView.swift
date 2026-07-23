@@ -15,6 +15,7 @@ struct MapTabView: View {
     @State private var visibleRegion = defaultMapRegion
     @State private var selectedSpot: MapSpot?
     @State private var selectedWindObservation: WindObservation?
+    @State private var selectedAirportObservation: AirportObservation?
     @State private var filter: SpotFilter = .all
     @State private var favoritesOnly = false
     @State private var showWind = true
@@ -64,6 +65,7 @@ struct MapTabView: View {
         }
         .sheet(item: $selectedSpot) { SpotDetailSheet(spot: $0).environmentObject(store) }
         .sheet(item: $selectedWindObservation) { WindObservationDetailSheet(observation: $0) }
+        .sheet(item: $selectedAirportObservation) { AirportObservationDetailSheet(observation: $0) }
         .sheet(isPresented: $showsLaunchList) { LaunchesView().environmentObject(store) }
         .sheet(isPresented: $showsMapSettings) {
             MapLayerSettingsSheet(
@@ -119,13 +121,31 @@ struct MapTabView: View {
     private var baseMap: some View {
         Map(position: $position, interactionModes: .all) {
             UserAnnotation()
-            if showWind, windLayerMode.showsObservations, offsetHours == 0 {
+            if showWind,
+               windLayerMode.showsObservations,
+               !favoritesOnly,
+               offsetHours == 0,
+               (filter == .all || filter == .marineStations) {
                 ForEach(viewModel.windObservations) { observation in
                     Annotation("", coordinate: observation.coordinate, anchor: .center) {
                         Button {
                             selectedWindObservation = observation
                         } label: {
                             WindObservationPinView(observation: observation)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            if !favoritesOnly,
+               offsetHours == 0,
+               (filter == .all || filter == .airports) {
+                ForEach(viewModel.airportObservations) { observation in
+                    Annotation("", coordinate: observation.coordinate, anchor: .center) {
+                        Button {
+                            selectedAirportObservation = observation
+                        } label: {
+                            AirportObservationPinView(observation: observation)
                         }
                         .buttonStyle(.plain)
                     }
@@ -227,7 +247,7 @@ struct MapTabView: View {
             Image(systemName: "magnifyingglass")
                 .font(.headline)
                 .foregroundStyle(Color.deepNavy)
-            TextField("Search city, ramp, or pier", text: $searchText)
+            TextField("Search city, ramp, pier, airport, or weather spot", text: $searchText)
                 .focused($searchFocused)
                 .submitLabel(.search)
                 .onSubmit { performSearch() }
@@ -341,7 +361,7 @@ struct MapTabView: View {
 
     private var windLegendSource: String {
         if windLayerMode == .hybrid, offsetHours == 0 {
-            return "Hybrid · \(viewModel.windObservations.count) NOAA"
+            return "Hybrid · \(viewModel.windObservations.count) marine · \(viewModel.airportObservations.count) airport"
         }
         return "Modeled surface · 10 m"
     }
@@ -349,12 +369,10 @@ struct MapTabView: View {
     private var observationStatusBar: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("MEASURED WIND")
+                Text("LIVE OBSERVATIONS")
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(Color.oceanBlue)
-                Text(viewModel.windObservations.isEmpty
-                     ? "No NOAA stations in this view"
-                     : "\(viewModel.windObservations.count) NOAA stations")
+                Text("\(viewModel.windObservations.count) marine · \(viewModel.airportObservations.count) airport")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.deepNavy)
             }

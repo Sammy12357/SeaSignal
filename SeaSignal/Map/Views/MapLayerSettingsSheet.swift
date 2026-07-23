@@ -54,6 +54,7 @@ struct MapLayerSettingsSheet: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Link("Open-Meteo weather data", destination: URL(string: "https://open-meteo.com/")!)
+                    Link("NOAA/NWS airport METARs", destination: URL(string: "https://aviationweather.gov/data/api/")!)
                     if windLayerMode.showsObservations {
                         Link("NOAA National Data Buoy Center", destination: URL(string: "https://www.ndbc.noaa.gov/")!)
                     }

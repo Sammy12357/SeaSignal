@@ -57,6 +57,9 @@ struct OverpassProvider: Sendable {
             guard let latitude, let longitude else { return nil }
 
             let isRamp = element.tags?["leisure"] == "slipway"
+                || element.tags?["service"] == "slipway"
+                || element.tags?["waterway"] == "access_point"
+                || element.tags?["amenity"] == "boat_ramp"
             let isPier = element.tags?["man_made"] == "pier"
             guard isRamp || isPier else { return nil }
             let kind: SpotKind = isRamp ? .ramp : .pier
@@ -67,7 +70,9 @@ struct OverpassProvider: Sendable {
                 name: name?.isEmpty == false ? name! : fallback,
                 latitude: latitude,
                 longitude: longitude,
-                kind: kind
+                kind: kind,
+                provider: "OpenStreetMap",
+                details: Self.details(from: element.tags)
             )
         }
         return deduplicate(spots)
@@ -94,6 +99,9 @@ struct OverpassProvider: Sendable {
         [out:json][timeout:20];
         (
           nwr["leisure"="slipway"](\(bounds));
+          nwr["service"="slipway"](\(bounds));
+          nwr["waterway"="access_point"](\(bounds));
+          nwr["amenity"="boat_ramp"](\(bounds));
           nwr["man_made"="pier"](\(bounds));
         );
         out center 300;
@@ -105,7 +113,14 @@ struct OverpassProvider: Sendable {
 
     private func mapKitFallback(in region: MKCoordinateRegion) async throws -> [MapSpot] {
         await withTaskGroup(of: [MapSpot].self) { group in
-            for (query, kind) in [("boat ramp", SpotKind.ramp), ("public boat launch", .ramp), ("fishing pier", .pier)] {
+            for (query, kind) in [
+                ("boat ramp", SpotKind.ramp),
+                ("public boat launch", .ramp),
+                ("boat landing", .ramp),
+                ("kayak launch", .ramp),
+                ("marina boat launch", .ramp),
+                ("fishing pier", .pier)
+            ] {
                 group.addTask {
                     let request = MKLocalSearch.Request()
                     request.naturalLanguageQuery = query
@@ -122,7 +137,8 @@ struct OverpassProvider: Sendable {
                             name: name,
                             latitude: coordinate.latitude,
                             longitude: coordinate.longitude,
-                            kind: kind
+                            kind: kind,
+                            provider: "Apple Maps"
                         )
                     }
                 }
@@ -131,5 +147,14 @@ struct OverpassProvider: Sendable {
             for await spots in group { values.append(contentsOf: spots) }
             return Self.deduplicate(values, thresholdMetres: 75)
         }
+    }
+
+    private static func details(from tags: [String: String]?) -> [String: String]? {
+        guard let tags else { return nil }
+        let keys = ["operator", "access", "fee", "surface", "trailer", "motorboat", "canoe", "parking", "toilets", "opening_hours"]
+        let values = Dictionary(uniqueKeysWithValues: keys.compactMap { key in
+            tags[key].map { (key.replacingOccurrences(of: "_", with: " ").capitalized, $0) }
+        })
+        return values.isEmpty ? nil : values
     }
 }

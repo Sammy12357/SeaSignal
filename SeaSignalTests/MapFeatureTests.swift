@@ -45,9 +45,11 @@ final class MapFeatureTests: XCTestCase {
         let data = try fixture(named: "overpass_spots")
         let spots = try OverpassProvider.decode(data)
 
-        XCTAssertEqual(spots.count, 2)
+        XCTAssertEqual(spots.count, 4)
         XCTAssertTrue(spots.contains { $0.name == "Ballast Point Ramp" && $0.kind == .ramp })
         XCTAssertTrue(spots.contains { $0.name == "Fishing pier" && $0.kind == .pier })
+        XCTAssertTrue(spots.contains { $0.name == "Trailer Ramp" && $0.details?["Fee"] == "yes" })
+        XCTAssertTrue(spots.contains { $0.name == "Kayak Put-in" && $0.details?["Canoe"] == "yes" })
     }
 
     func testWindGridDecoderUsesNearestHour() throws {
@@ -103,6 +105,42 @@ final class MapFeatureTests: XCTestCase {
         let names = NOAAWindObservationProvider.decodeStationNames(Data(xml.utf8))
 
         XCTAssertEqual(names["SAPF1"], "St. Petersburg, FL")
+    }
+
+    func testAirportMETARDecoderHandlesVariableWindAndKeepsLatestReport() throws {
+        let json = """
+        [
+          {
+            "icaoId": "KTPA", "name": "Tampa Intl", "lat": 27.9633, "lon": -82.54,
+            "obsTime": 1784829180, "wdir": 220, "wspd": 6, "visib": "10+",
+            "temp": 31.1, "dewp": 24.4, "altim": 1018, "rawOb": "METAR KTPA OLD"
+          },
+          {
+            "icaoId": "KTPA", "name": "Tampa Intl", "lat": 27.9633, "lon": -82.54,
+            "obsTime": 1784832780, "wdir": "VRB", "wspd": 8, "wgst": 14,
+            "temp": 32.2, "dewp": 23.9, "altim": 1017.4, "rawOb": "METAR KTPA NEW"
+          }
+        ]
+        """
+
+        let observations = try AirportWeatherProvider.decode(Data(json.utf8))
+        let airport = try XCTUnwrap(observations.first)
+
+        XCTAssertEqual(observations.count, 1)
+        XCTAssertEqual(airport.stationID, "KTPA")
+        XCTAssertNil(airport.windDirectionDegrees)
+        XCTAssertEqual(airport.windSpeedKnots, 8)
+        XCTAssertEqual(airport.gustKnots, 14)
+        XCTAssertEqual(airport.rawReport, "METAR KTPA NEW")
+    }
+
+    func testGandyBridgeCuratedWeatherSpot() throws {
+        let spot = try XCTUnwrap(CuratedWeatherSpots.all.first { $0.id == "curated:gandy-bridge" })
+        XCTAssertEqual(spot.kind, .weatherSpot)
+        XCTAssertEqual(spot.name, "Gandy Bridge")
+        XCTAssertTrue(spot.latitude > 27.8 && spot.latitude < 28.0)
+        XCTAssertTrue(spot.longitude < -82.4 && spot.longitude > -82.7)
+        XCTAssertNotNil(spot.details?["Sensor note"])
     }
 
     func testHybridWindModeCombinesModeledAndObservedData() {

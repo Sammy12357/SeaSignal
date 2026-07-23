@@ -22,6 +22,23 @@ struct SpotDetailSheet: View {
                     }
                 }
 
+                if let provider = spot.provider {
+                    Label(provider, systemImage: "checkmark.seal")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let details = spot.details, !details.isEmpty {
+                    VStack(alignment: .leading, spacing: 9) {
+                        ForEach(details.keys.sorted(), id: \.self) { key in
+                            LabeledContent(key, value: details[key] ?? "")
+                                .font(.subheadline)
+                        }
+                    }
+                    .padding(14)
+                    .background(Color.mist, in: RoundedRectangle(cornerRadius: 14))
+                }
+
                 if let favorite {
                     Label(favorite.summary, systemImage: "cloud.sun.fill")
                         .font(.subheadline)

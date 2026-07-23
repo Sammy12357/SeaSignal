@@ -6,25 +6,30 @@ final class MapTabViewModel: ObservableObject {
     @Published private(set) var spots: [MapSpot] = []
     @Published private(set) var windField: WindField?
     @Published private(set) var windObservations: [WindObservation] = []
+    @Published private(set) var airportObservations: [AirportObservation] = []
     @Published private(set) var isLoadingSpots = false
     @Published private(set) var isLoadingWind = false
     @Published private(set) var isLoadingObservations = false
     @Published private(set) var spotStatusMessage: String?
     @Published private(set) var windStatusMessage: String?
     @Published private(set) var observationStatusMessage: String?
+    @Published private(set) var airportStatusMessage: String?
     @Published private(set) var lastUpdated: Date?
 
-    var statusMessage: String? { windStatusMessage ?? observationStatusMessage ?? spotStatusMessage }
-    var isLoadingMapData: Bool { isLoadingSpots || isLoadingWind || isLoadingObservations }
+    var statusMessage: String? { windStatusMessage ?? observationStatusMessage ?? airportStatusMessage ?? spotStatusMessage }
+    var isLoadingMapData: Bool { isLoadingSpots || isLoadingWind || isLoadingObservations || isLoadingAirports }
+    @Published private(set) var isLoadingAirports = false
 
     private let overpass = OverpassProvider()
     private let windProvider = WindGridProvider()
     private let observationProvider = NOAAWindObservationProvider()
+    private let airportProvider = AirportWeatherProvider()
     private let throttler = RegionThrottler()
     private var lastRegion: MKCoordinateRegion?
     private var spotTask: Task<Void, Never>?
     private var windTask: Task<Void, Never>?
     private var observationTask: Task<Void, Never>?
+    private var airportTask: Task<Void, Never>?
 
     func regionSettled(
         _ region: MKCoordinateRegion,
@@ -100,6 +105,7 @@ final class MapTabViewModel: ObservableObject {
         windLayerMode: WindLayerMode
     ) {
         loadSpots(region: region, favorites: favorites)
+        loadAirports(region: region)
         configureWindLayers(region: region, offsetHours: offsetHours, windLayerMode: windLayerMode)
     }
 
@@ -130,7 +136,7 @@ final class MapTabViewModel: ObservableObject {
     private func loadSpots(region: MKCoordinateRegion, favorites: [MapSpot]) {
         spotTask?.cancel()
         guard region.span.latitudeDelta <= 3.2, region.span.longitudeDelta <= 3.2 else {
-            spots = []
+            spots = Self.merge(discovered: CuratedWeatherSpots.all, favorites: favorites)
             spotStatusMessage = "Zoom in to discover ramps and piers"
             return
         }
@@ -139,14 +145,38 @@ final class MapTabViewModel: ObservableObject {
             do {
                 let found = try await overpass.fetch(in: region)
                 guard !Task.isCancelled else { return }
-                spots = Self.merge(discovered: found, favorites: favorites)
+                spots = Self.merge(discovered: found + CuratedWeatherSpots.all, favorites: favorites)
                 spotStatusMessage = found.isEmpty ? "No mapped ramps or piers in this area" : nil
                 lastUpdated = Date()
             } catch {
                 guard !Task.isCancelled else { return }
+                spots = Self.merge(discovered: CuratedWeatherSpots.all, favorites: favorites)
                 spotStatusMessage = "Ramp data is temporarily unavailable"
             }
             isLoadingSpots = false
+        }
+    }
+
+    private func loadAirports(region: MKCoordinateRegion) {
+        airportTask?.cancel()
+        guard region.span.latitudeDelta <= 8, region.span.longitudeDelta <= 8 else {
+            airportObservations = []
+            airportStatusMessage = "Zoom in to see airport observations"
+            return
+        }
+        isLoadingAirports = true
+        airportTask = Task {
+            do {
+                let snapshot = try await airportProvider.fetch(in: region)
+                guard !Task.isCancelled else { return }
+                airportObservations = snapshot.observations
+                airportStatusMessage = snapshot.isStale ? "Showing saved airport observations" : nil
+            } catch {
+                guard !Task.isCancelled else { return }
+                airportObservations = []
+                airportStatusMessage = "Airport observations are temporarily unavailable"
+            }
+            isLoadingAirports = false
         }
     }
 
