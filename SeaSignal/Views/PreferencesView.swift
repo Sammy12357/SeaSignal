@@ -7,6 +7,8 @@ struct PreferencesView: View {
     @AppStorage("highTideWindow") private var highTideWindow = 90.0
     @AppStorage("requireHighTide") private var requireHighTide = false
     @AppStorage("tripLength") private var tripLength = 6.0
+    @AppStorage("weatherEffectsEnabled") private var weatherEffectsEnabled = true
+    @AppStorage("weatherEffectsLayer") private var weatherEffectsLayer = "wind"
 
     var body: some View {
         NavigationStack {
@@ -54,6 +56,20 @@ struct PreferencesView: View {
                     Text("Trip planning")
                 } footer: {
                     Text("We use this duration to find launch and retrieval times that fit your day.")
+                }
+
+                Section("Map effects") {
+                    Toggle(isOn: $weatherEffectsEnabled) {
+                        Label("Animated weather effects", systemImage: "wind")
+                    }
+                    Picker("Default layer", selection: $weatherEffectsLayer) {
+                        Text("Wind").tag("wind")
+                        Text("Waves").tag("waves")
+                        Text("Currents").tag("currents")
+                    }
+                    Text("Reduced Motion and Low Power Mode automatically simplify map animation.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("Safety") {

@@ -15,6 +15,10 @@
 		A10000000000000000000007 /* LaunchesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000007 /* LaunchesView.swift */; };
 		A10000000000000000000008 /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* PreferencesView.swift */; };
 		A10000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000009 /* Assets.xcassets */; };
+		A10000000000000000000010 /* ForecastModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000010 /* ForecastModels.swift */; };
+		A10000000000000000000011 /* WeatherServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* WeatherServices.swift */; };
+		A10000000000000000000012 /* WeatherMapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* WeatherMapViewModel.swift */; };
+		A10000000000000000000013 /* WeatherEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000013 /* WeatherEffects.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +32,10 @@
 		B10000000000000000000007 /* LaunchesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchesView.swift; sourceTree = "<group>"; };
 		B10000000000000000000008 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
 		B10000000000000000000009 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B10000000000000000000010 /* ForecastModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForecastModels.swift; sourceTree = "<group>"; };
+		B10000000000000000000011 /* WeatherServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherServices.swift; sourceTree = "<group>"; };
+		B10000000000000000000012 /* WeatherMapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherMapViewModel.swift; sourceTree = "<group>"; };
+		B10000000000000000000013 /* WeatherEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherEffects.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -36,11 +44,14 @@
 
 /* Begin PBXGroup section */
 		D10000000000000000000000 = {isa = PBXGroup; children = (D10000000000000000000001 /* SeaSignal */, D10000000000000000000002 /* Products */); sourceTree = "<group>"; };
-		D10000000000000000000001 /* SeaSignal */ = {isa = PBXGroup; path = SeaSignal; sourceTree = "<group>"; children = (B10000000000000000000001, B10000000000000000000002, D10000000000000000000003, D10000000000000000000004, D10000000000000000000005, B10000000000000000000009); };
+		D10000000000000000000001 /* SeaSignal */ = {isa = PBXGroup; path = SeaSignal; sourceTree = "<group>"; children = (B10000000000000000000001, B10000000000000000000002, D10000000000000000000003, D10000000000000000000004, D10000000000000000000005, D10000000000000000000006, D10000000000000000000007, D10000000000000000000008, B10000000000000000000009); };
 		D10000000000000000000002 /* Products */ = {isa = PBXGroup; name = Products; sourceTree = "<group>"; children = (B10000000000000000000000); };
-		D10000000000000000000003 /* Models */ = {isa = PBXGroup; path = Models; sourceTree = "<group>"; children = (B10000000000000000000003); };
+		D10000000000000000000003 /* Models */ = {isa = PBXGroup; path = Models; sourceTree = "<group>"; children = (B10000000000000000000003, B10000000000000000000010); };
 		D10000000000000000000004 /* Components */ = {isa = PBXGroup; path = Components; sourceTree = "<group>"; children = (B10000000000000000000004); };
 		D10000000000000000000005 /* Views */ = {isa = PBXGroup; path = Views; sourceTree = "<group>"; children = (B10000000000000000000005, B10000000000000000000006, B10000000000000000000007, B10000000000000000000008); };
+		D10000000000000000000006 /* Services */ = {isa = PBXGroup; path = Services; sourceTree = "<group>"; children = (B10000000000000000000011); };
+		D10000000000000000000007 /* ViewModels */ = {isa = PBXGroup; path = ViewModels; sourceTree = "<group>"; children = (B10000000000000000000012); };
+		D10000000000000000000008 /* Effects */ = {isa = PBXGroup; path = Effects; sourceTree = "<group>"; children = (B10000000000000000000013); };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -56,7 +67,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		C10000000000000000000002 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000004, A10000000000000000000005, A10000000000000000000006, A10000000000000000000007, A10000000000000000000008); runOnlyForDeploymentPostprocessing = 0; };
+		C10000000000000000000002 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000004, A10000000000000000000005, A10000000000000000000006, A10000000000000000000007, A10000000000000000000008, A10000000000000000000010, A10000000000000000000011, A10000000000000000000012, A10000000000000000000013); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
