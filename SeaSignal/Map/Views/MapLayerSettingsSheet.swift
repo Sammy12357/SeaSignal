@@ -6,6 +6,7 @@ struct MapLayerSettingsSheet: View {
     @Binding var windMode: WindDisplayMode
     @Binding var satellite: Bool
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack {
@@ -34,6 +35,11 @@ struct MapLayerSettingsSheet: View {
                             Text(windMode.detail)
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
+                            if reduceMotion, windMode != .colorOnly {
+                                Label("Reduce Motion is enabled, so the wind field remains still.", systemImage: "accessibility")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }

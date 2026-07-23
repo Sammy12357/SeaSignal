@@ -46,7 +46,7 @@ struct WindColorOverlay: View {
     let region: MKCoordinateRegion
 
     var body: some View {
-        Canvas { context, size in
+        Canvas(rendersAsynchronously: true) { context, size in
             guard field.rows > 1, field.columns > 1 else { return }
             let displayColumns = 18
             let displayRows = max(18, Int(Double(displayColumns) * size.height / max(size.width, 1)))

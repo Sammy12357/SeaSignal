@@ -113,6 +113,14 @@ final class MapFeatureTests: XCTestCase {
         XCTAssertEqual(zoomedOut.span.longitudeDelta, 1.6)
     }
 
+    func testForecastTimelineClampsAndStopsAtBounds() {
+        XCTAssertEqual(ForecastPlaybackRange.clamped(-9), -6)
+        XCTAssertEqual(ForecastPlaybackRange.clamped(75), 72)
+        XCTAssertEqual(ForecastPlaybackRange.nextOffset(after: -6), -3)
+        XCTAssertEqual(ForecastPlaybackRange.nextOffset(after: 69), 72)
+        XCTAssertNil(ForecastPlaybackRange.nextOffset(after: 72))
+    }
+
     func testFavoriteWinsWhenMergingNearbyDiscovery() {
         let favorite = MapSpot(id: "favorite:1", name: "My Ramp", latitude: 28, longitude: -82.5, kind: .ramp)
         let duplicate = MapSpot(id: "osm:node:1", name: "Public boat ramp", latitude: 28.0001, longitude: -82.5, kind: .ramp)

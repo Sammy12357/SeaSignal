@@ -9,6 +9,7 @@ private let defaultMapRegion = MKCoordinateRegion(
 struct MapTabView: View {
     @EnvironmentObject private var store: LaunchStore
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var viewModel = MapTabViewModel()
     @State private var position: MapCameraPosition = .region(defaultMapRegion)
     @State private var visibleRegion = defaultMapRegion
@@ -51,7 +52,7 @@ struct MapTabView: View {
                             field: field,
                             region: visibleRegion,
                             mode: windDisplayMode,
-                            isPaused: scenePhase != .active,
+                            isPaused: scenePhase != .active || reduceMotion,
                             lowPowerMode: lowPowerMode
                         )
                     }
