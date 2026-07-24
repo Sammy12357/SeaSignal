@@ -54,8 +54,9 @@ actor MapDiskCache {
     func store(spots value: [MapSpot], for region: MKCoordinateRegion) {
         let cacheKey = key(region)
         spots[cacheKey] = SpotEntry(key: cacheKey, spots: value, date: Date())
-        if spots.count > 32 {
-            spots = Dictionary(uniqueKeysWithValues: spots.values.sorted { $0.date > $1.date }.prefix(32).map { ($0.key, $0) })
+        // Tiles are reused across pans and zooms, so retaining more of them pays off directly.
+        if spots.count > 64 {
+            spots = Dictionary(uniqueKeysWithValues: spots.values.sorted { $0.date > $1.date }.prefix(64).map { ($0.key, $0) })
         }
         persist(Array(spots.values), to: spotFile)
     }

@@ -19,33 +19,54 @@ struct OverpassResponse: Decodable {
     }
 }
 
+/// Result of a spot lookup. `wasTruncated` is true when Overpass returned exactly the
+/// element cap, meaning the area holds more ramps than were returned and the set shown
+/// is only part of the picture.
+struct SpotFetchResult: Sendable {
+    let spots: [MapSpot]
+    let wasTruncated: Bool
+}
+
 struct OverpassProvider: Sendable {
     private let endpoint = URL(string: "https://overpass-api.de/api/interpreter")!
 
-    func fetch(in region: MKCoordinateRegion) async throws -> [MapSpot] {
-        if let cached = await MapDiskCache.shared.spotValue(for: region) { return cached }
+    /// Maximum elements Overpass will return for one query. Overpass does not guarantee
+    /// *which* elements it returns when it truncates, so hitting this cap must be surfaced
+    /// rather than silently displayed.
+    static let elementLimit = 600
+
+    func fetch(in region: MKCoordinateRegion) async throws -> SpotFetchResult {
+        // Quantise before doing anything else: the tile drives the query, the cache key and
+        // the fallbacks, so a small pan or zoom reuses all three.
+        let tile = GeoMath.fetchTile(for: region)
+
+        if let cached = await MapDiskCache.shared.spotValue(for: tile) {
+            return SpotFetchResult(spots: cached, wasTruncated: cached.count >= Self.elementLimit)
+        }
 
         do {
             var request = URLRequest(url: endpoint)
             request.httpMethod = "POST"
-            request.timeoutInterval = 15
+            request.timeoutInterval = 8
             request.setValue("application/x-www-form-urlencoded; charset=utf-8", forHTTPHeaderField: "Content-Type")
             request.setValue("SeaSignal/1.0 (iOS boating conditions app)", forHTTPHeaderField: "User-Agent")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
-            request.httpBody = Self.formBody(for: region)
+            request.httpBody = Self.formBody(for: tile)
 
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                 throw URLError(.badServerResponse)
             }
             let spots = try Self.decode(data)
-            await MapDiskCache.shared.store(spots: spots, for: region)
-            return spots
+            await MapDiskCache.shared.store(spots: spots, for: tile)
+            return SpotFetchResult(spots: spots, wasTruncated: spots.count >= Self.elementLimit)
         } catch {
-            if let stale = await MapDiskCache.shared.staleSpots(for: region) { return stale }
-            let fallback = try await mapKitFallback(in: region)
-            await MapDiskCache.shared.store(spots: fallback, for: region)
-            return fallback
+            if let stale = await MapDiskCache.shared.staleSpots(for: tile) {
+                return SpotFetchResult(spots: stale, wasTruncated: false)
+            }
+            let fallback = try await mapKitFallback(in: tile)
+            await MapDiskCache.shared.store(spots: fallback, for: tile)
+            return SpotFetchResult(spots: fallback, wasTruncated: false)
         }
     }
 
@@ -94,14 +115,14 @@ struct OverpassProvider: Sendable {
         let box = GeoMath.boundingBox(region)
         let bounds = "\(box.south),\(box.west),\(box.north),\(box.east)"
         let query = """
-        [out:json][timeout:20];
+        [out:json][timeout:12];
         (
           nwr["leisure"="slipway"](\(bounds));
           nwr["service"="slipway"](\(bounds));
           nwr["waterway"="access_point"](\(bounds));
           nwr["amenity"="boat_ramp"](\(bounds));
         );
-        out center 300;
+        out center \(Self.elementLimit);
         """
         var components = URLComponents()
         components.queryItems = [URLQueryItem(name: "data", value: query)]

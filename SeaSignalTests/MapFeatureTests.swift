@@ -325,6 +325,121 @@ final class MapFeatureTests: XCTestCase {
         XCTAssertLessThanOrEqual(region.span.longitudeDelta, 180)
     }
 
+    // MARK: - Fetch tile quantisation
+
+    func testFetchTileIsStableAcrossSmallPans() {
+        let base = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 27.95, longitude: -82.46),
+            span: MKCoordinateSpan(latitudeDelta: 0.30, longitudeDelta: 0.30)
+        )
+        let panned = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 27.96, longitude: -82.45),
+            span: MKCoordinateSpan(latitudeDelta: 0.30, longitudeDelta: 0.30)
+        )
+
+        let first = GeoMath.fetchTile(for: base)
+        let second = GeoMath.fetchTile(for: panned)
+
+        // Identical tiles mean one Overpass query and one cache entry serve both views,
+        // which is what stops pins reshuffling and stops every zoom hitting the network.
+        XCTAssertEqual(first.center.latitude, second.center.latitude, accuracy: 0.000001)
+        XCTAssertEqual(first.center.longitude, second.center.longitude, accuracy: 0.000001)
+        XCTAssertEqual(first.span.latitudeDelta, second.span.latitudeDelta, accuracy: 0.000001)
+    }
+
+    func testFetchTileDiffersAcrossZoomBuckets() {
+        let center = CLLocationCoordinate2D(latitude: 27.95, longitude: -82.46)
+        let close = GeoMath.fetchTile(for: MKCoordinateRegion(
+            center: center, span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
+        ))
+        let wide = GeoMath.fetchTile(for: MKCoordinateRegion(
+            center: center, span: MKCoordinateSpan(latitudeDelta: 2.0, longitudeDelta: 2.0)
+        ))
+
+        XCTAssertNotEqual(close.span.latitudeDelta, wide.span.latitudeDelta, accuracy: 0.000001)
+    }
+
+    func testFetchTileCoversItsSourceRegion() {
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 27.95, longitude: -82.46),
+            span: MKCoordinateSpan(latitudeDelta: 0.30, longitudeDelta: 0.30)
+        )
+        let tile = GeoMath.fetchTile(for: region)
+        let box = GeoMath.boundingBox(region)
+
+        for latitude in [box.south, box.north] {
+            for longitude in [box.west, box.east] {
+                XCTAssertTrue(
+                    GeoMath.contains(tile, coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude)),
+                    "tile must cover the visible corner \(latitude), \(longitude)"
+                )
+            }
+        }
+    }
+
+    func testFetchTileIsClampedForExtremeSpans() {
+        let center = CLLocationCoordinate2D(latitude: 27.95, longitude: -82.46)
+        let tiny = GeoMath.fetchTile(for: MKCoordinateRegion(
+            center: center, span: MKCoordinateSpan(latitudeDelta: 0.0005, longitudeDelta: 0.0005)
+        ))
+        let huge = GeoMath.fetchTile(for: MKCoordinateRegion(
+            center: center, span: MKCoordinateSpan(latitudeDelta: 90, longitudeDelta: 90)
+        ))
+
+        XCTAssertEqual(tiny.span.latitudeDelta, 0.06, accuracy: 0.000001)   // 0.03 floor, doubled
+        XCTAssertEqual(huge.span.latitudeDelta, 8.0, accuracy: 0.000001)    // 4.0 ceiling, doubled
+    }
+
+    // MARK: - Spots are never discarded
+
+    func testAccumulateKeepsExistingSpots() {
+        let existing = [
+            MapSpot(id: "osm:node:1", name: "Ballast Point", latitude: 27.90, longitude: -82.51, kind: .ramp),
+            MapSpot(id: "osm:node:2", name: "Davis Islands", latitude: 27.88, longitude: -82.45, kind: .ramp)
+        ]
+        let found = [
+            MapSpot(id: "osm:node:3", name: "Picnic Island", latitude: 27.86, longitude: -82.55, kind: .ramp)
+        ]
+
+        let result = MapTabViewModel.accumulate(
+            existing: existing,
+            found: found,
+            favorites: [],
+            around: CLLocationCoordinate2D(latitude: 27.89, longitude: -82.50)
+        )
+
+        let ids = Set(result.map(\.id))
+        XCTAssertTrue(ids.contains("osm:node:1"))
+        XCTAssertTrue(ids.contains("osm:node:2"))
+        XCTAssertTrue(ids.contains("osm:node:3"))
+    }
+
+    func testAccumulateBoundsGrowthToNearestSpots() {
+        let center = CLLocationCoordinate2D(latitude: 28.0, longitude: -82.5)
+        let existing = Self.gridSpots(count: 60, baseLatitude: 28.0, baseLongitude: -82.5, spacing: 0.02)
+
+        let result = MapTabViewModel.accumulate(
+            existing: existing, found: [], favorites: [], around: center, limit: 20
+        )
+
+        XCTAssertLessThanOrEqual(result.count, 20 + CuratedWeatherSpots.all.count)
+    }
+
+    func testClusteringEngagesAboveCountThreshold() {
+        let spots = Self.gridSpots(count: 200, baseLatitude: 27.85, baseLongitude: -82.60, spacing: 0.005)
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 27.885, longitude: -82.565),
+            span: MKCoordinateSpan(latitudeDelta: 0.30, longitudeDelta: 0.30)
+        )
+
+        let items = MapTabViewModel().displayItems(
+            filter: .all, favoritesOnly: false, favorites: spots, region: region
+        )
+
+        // 200 > clusterCountThreshold (150), so the performance guard should engage.
+        XCTAssertGreaterThan(Self.clusterCount(in: items), 0)
+    }
+
     // MARK: - Helpers
 
     /// Grid of ramps spaced well beyond the dedupe radius so none are collapsed.
