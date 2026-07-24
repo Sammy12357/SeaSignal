@@ -8,7 +8,7 @@ final class RegionThrottler {
     func submit(_ region: MKCoordinateRegion, action: @escaping @MainActor (MKCoordinateRegion) -> Void) {
         task?.cancel()
         task = Task {
-            try? await Task.sleep(for: .milliseconds(550))
+            try? await Task.sleep(for: .milliseconds(700))
             guard !Task.isCancelled else { return }
             if let lastRegion, !movedEnough(from: lastRegion, to: region) { return }
             self.lastRegion = region

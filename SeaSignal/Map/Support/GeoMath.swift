@@ -51,4 +51,29 @@ enum GeoMath {
             )
         )
     }
+
+    /// Snaps a viewport onto a stable tile grid so that small pans and zooms reuse the
+    /// same Overpass query and the same cache entry.
+    ///
+    /// Fetching on the raw viewport caused two bugs. Overpass caps results (`out center N`)
+    /// and does not guarantee *which* N it returns, so a slightly different bounding box
+    /// produced a different arbitrary subset and pins visibly jumped around. And because
+    /// `MapDiskCache` keys on the bounding box, every zoom step was a cache miss and a full
+    /// network round trip. Quantising fixes both at once.
+    ///
+    /// The returned tile is padded to twice the bucket size so panning has headroom; callers
+    /// still trim to the visible region with `contains(_:coordinate:)`.
+    static func fetchTile(for region: MKCoordinateRegion) -> MKCoordinateRegion {
+        let rawSpan = max(region.span.latitudeDelta, region.span.longitudeDelta, 0.001)
+        let bucket = pow(2.0, log2(rawSpan).rounded(.up))
+        let tile = min(max(bucket, 0.03), 4.0)
+
+        let snappedLatitude = (region.center.latitude / tile).rounded() * tile
+        let snappedLongitude = (region.center.longitude / tile).rounded() * tile
+
+        return MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: snappedLatitude, longitude: snappedLongitude),
+            span: MKCoordinateSpan(latitudeDelta: tile * 2, longitudeDelta: tile * 2)
+        )
+    }
 }

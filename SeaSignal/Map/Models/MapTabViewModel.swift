@@ -25,7 +25,7 @@ final class MapTabViewModel: ObservableObject {
     /// values if clusters ever reappear at a usable scale; lower `clusterCountThreshold`
     /// (not the span) if dense regions start dropping frames.
     private static let clusterSpanThreshold: Double = 2.0
-    private static let clusterCountThreshold: Int = 400
+    private static let clusterCountThreshold: Int = 150
 
     private let overpass = OverpassProvider()
     private let windProvider = WindGridProvider()
@@ -33,6 +33,7 @@ final class MapTabViewModel: ObservableObject {
     private let airportProvider = AirportWeatherProvider()
     private let throttler = RegionThrottler()
     private var lastRegion: MKCoordinateRegion?
+    private var lastSpotTile: MKCoordinateRegion?
     private var spotTask: Task<Void, Never>?
     private var windTask: Task<Void, Never>?
     private var observationTask: Task<Void, Never>?
@@ -148,27 +149,72 @@ final class MapTabViewModel: ObservableObject {
     }
 
     private func loadSpots(region: MKCoordinateRegion, favorites: [MapSpot]) {
+        // Nothing to do if the quantised tile has not changed and we already have data.
+        let tile = GeoMath.fetchTile(for: region)
+        if let lastSpotTile, Self.sameTile(lastSpotTile, tile), !spots.isEmpty {
+            return
+        }
+
         spotTask?.cancel()
         guard region.span.latitudeDelta <= 3.2, region.span.longitudeDelta <= 3.2 else {
-            spots = Self.merge(discovered: CuratedWeatherSpots.all, favorites: favorites)
-            spotStatusMessage = "Zoom in to discover ramps and piers"
+            // Keep whatever is already loaded on screen. displayItems already filters to the
+            // visible region, so there is nothing to gain from discarding it — and discarding
+            // it is what made zooming out and back in blank the map.
+            spotStatusMessage = "Zoom in to discover more ramps"
+            isLoadingSpots = false
             return
         }
         isLoadingSpots = true
         spotTask = Task {
             do {
-                let found = try await overpass.fetch(in: region)
+                let result = try await overpass.fetch(in: region)
                 guard !Task.isCancelled else { return }
-                spots = Self.merge(discovered: found + CuratedWeatherSpots.all, favorites: favorites)
-                spotStatusMessage = found.isEmpty ? "No mapped ramps or piers in this area" : nil
+                lastSpotTile = tile
+                spots = Self.accumulate(
+                    existing: spots,
+                    found: result.spots,
+                    favorites: favorites,
+                    around: region.center
+                )
+                if result.wasTruncated {
+                    spotStatusMessage = "Showing part of this area — zoom in for all ramps"
+                } else {
+                    spotStatusMessage = result.spots.isEmpty && spots.isEmpty
+                        ? "No mapped ramps in this area"
+                        : nil
+                }
                 lastUpdated = Date()
             } catch {
                 guard !Task.isCancelled else { return }
-                spots = Self.merge(discovered: CuratedWeatherSpots.all, favorites: favorites)
-                spotStatusMessage = "Ramp data is temporarily unavailable"
+                // Preserve existing spots; only report a problem if we have nothing to show.
+                spotStatusMessage = spots.isEmpty ? "Ramp data is temporarily unavailable" : nil
             }
             isLoadingSpots = false
         }
+    }
+
+    /// Merges a freshly fetched tile into the running set instead of replacing it, so panning
+    /// builds up coverage rather than thrashing. Bounded so a long session cannot grow forever.
+    static func accumulate(
+        existing: [MapSpot],
+        found: [MapSpot],
+        favorites: [MapSpot],
+        around center: CLLocationCoordinate2D,
+        limit: Int = 800
+    ) -> [MapSpot] {
+        let combined = SpotDeduplicator.deduplicate(existing + found + CuratedWeatherSpots.all)
+        let bounded = combined.count <= limit
+            ? combined
+            : Array(combined.sorted {
+                GeoMath.distance($0.coordinate, center) < GeoMath.distance($1.coordinate, center)
+            }.prefix(limit))
+        return merge(discovered: bounded, favorites: favorites)
+    }
+
+    private static func sameTile(_ lhs: MKCoordinateRegion, _ rhs: MKCoordinateRegion) -> Bool {
+        abs(lhs.center.latitude - rhs.center.latitude) < 0.0001
+            && abs(lhs.center.longitude - rhs.center.longitude) < 0.0001
+            && abs(lhs.span.latitudeDelta - rhs.span.latitudeDelta) < 0.0001
     }
 
     private func loadAirports(region: MKCoordinateRegion) {
