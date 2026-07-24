@@ -56,14 +56,16 @@ struct OverpassProvider: Sendable {
             let longitude = element.lon ?? element.center?.lon
             guard let latitude, let longitude else { return nil }
 
+            // Piers are deliberately not ingested. The OSM `man_made=pier` tag also covers
+            // ferry terminals, breakwaters, jetties and walking piers, so it produced large
+            // numbers of markers that are neither piers in the angling sense nor launches.
             let isRamp = element.tags?["leisure"] == "slipway"
                 || element.tags?["service"] == "slipway"
                 || element.tags?["waterway"] == "access_point"
                 || element.tags?["amenity"] == "boat_ramp"
-            let isPier = element.tags?["man_made"] == "pier"
-            guard isRamp || isPier else { return nil }
-            let kind: SpotKind = isRamp ? .ramp : .pier
-            let fallback = kind == .ramp ? "Public boat ramp" : "Fishing pier"
+            guard isRamp else { return nil }
+            let kind: SpotKind = .ramp
+            let fallback = "Public boat ramp"
             let name = element.tags?["name"]?.trimmingCharacters(in: .whitespacesAndNewlines)
             return MapSpot(
                 id: "osm:\(element.type):\(element.id)",
@@ -78,18 +80,14 @@ struct OverpassProvider: Sendable {
         return deduplicate(spots)
     }
 
-    static func deduplicate(_ spots: [MapSpot], thresholdMetres: Double = 35) -> [MapSpot] {
-        var result: [MapSpot] = []
-        for spot in spots {
-            if let index = result.firstIndex(where: { GeoMath.distance($0.coordinate, spot.coordinate) < thresholdMetres }) {
-                let existingIsGeneric = result[index].name == "Public boat ramp" || result[index].name == "Fishing pier"
-                let incomingIsNamed = spot.name != "Public boat ramp" && spot.name != "Fishing pier"
-                if existingIsGeneric && incomingIsNamed { result[index] = spot }
-            } else {
-                result.append(spot)
-            }
-        }
-        return result
+    /// Cheap pre-pass to shrink the payload before it reaches the view model.
+    /// Shares the radius and precedence rules with `SpotDeduplicator` so that
+    /// provider-level and display-level results can never disagree.
+    static func deduplicate(
+        _ spots: [MapSpot],
+        thresholdMetres: Double = SpotDeduplicator.radiusMetres
+    ) -> [MapSpot] {
+        SpotDeduplicator.deduplicate(spots, radiusMetres: thresholdMetres)
     }
 
     private static func formBody(for region: MKCoordinateRegion) -> Data {
@@ -102,7 +100,6 @@ struct OverpassProvider: Sendable {
           nwr["service"="slipway"](\(bounds));
           nwr["waterway"="access_point"](\(bounds));
           nwr["amenity"="boat_ramp"](\(bounds));
-          nwr["man_made"="pier"](\(bounds));
         );
         out center 300;
         """
@@ -113,13 +110,14 @@ struct OverpassProvider: Sendable {
 
     private func mapKitFallback(in region: MKCoordinateRegion) async throws -> [MapSpot] {
         await withTaskGroup(of: [MapSpot].self) { group in
+            // Three distinct queries only. The previous six were near-synonyms that
+            // returned the same POIs under slightly different names and coordinates,
+            // manufacturing duplicates the dedupe then had to clean up. Fewer parallel
+            // MKLocalSearch requests also cuts latency on this failure path.
             for (query, kind) in [
                 ("boat ramp", SpotKind.ramp),
-                ("public boat launch", .ramp),
-                ("boat landing", .ramp),
-                ("kayak launch", .ramp),
-                ("marina boat launch", .ramp),
-                ("fishing pier", .pier)
+                ("boat launch", .ramp),
+                ("kayak launch", .ramp)
             ] {
                 group.addTask {
                     let request = MKLocalSearch.Request()
@@ -145,7 +143,7 @@ struct OverpassProvider: Sendable {
             }
             var values: [MapSpot] = []
             for await spots in group { values.append(contentsOf: spots) }
-            return Self.deduplicate(values, thresholdMetres: 75)
+            return Self.deduplicate(values)
         }
     }
 

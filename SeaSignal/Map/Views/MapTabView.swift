@@ -3,10 +3,16 @@ import SwiftUI
 
 private let defaultMapRegion = MKCoordinateRegion(
     center: CLLocationCoordinate2D(latitude: 27.95, longitude: -82.46),
-    span: MKCoordinateSpan(latitudeDelta: 1.15, longitudeDelta: 0.9)
+    span: MKCoordinateSpan(latitudeDelta: 0.30, longitudeDelta: 0.25)
 )
 
 struct MapTabView: View {
+    /// One full zoom level per tap. These must multiply to exactly 1.0 so that a zoom in
+    /// followed by a zoom out returns to the original span; the previous 0.78 / 1.28 pair
+    /// produced 0.998 and drifted slightly on every round trip.
+    private static let zoomInScale: Double = 0.5
+    private static let zoomOutScale: Double = 2.0
+
     @EnvironmentObject private var store: LaunchStore
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -171,6 +177,7 @@ struct MapTabView: View {
                     switch item {
                     case .spot(let spot):
                         SpotPinView(spot: spot, isFavorite: store.isFavorite(spot))
+                    // Continental-zoom fallback only; unreachable at normal boating scale.
                     case .cluster(_, _, _, let count):
                         ClusterPinView(count: count)
                     }
@@ -274,8 +281,8 @@ struct MapTabView: View {
             controlButton(icon: "location.fill", label: "My location") { centerOnUser(force: true) }
             controlButton(icon: "map.fill", label: "Map settings") { showsMapSettings = true }
             controlButton(icon: "list.bullet", label: "Launch list") { showsLaunchList = true }
-            controlButton(icon: "plus.magnifyingglass", label: "Zoom in") { zoomMap(by: 0.78) }
-            controlButton(icon: "minus.magnifyingglass", label: "Zoom out") { zoomMap(by: 1.28) }
+            controlButton(icon: "plus.magnifyingglass", label: "Zoom in") { zoomMap(by: Self.zoomInScale) }
+            controlButton(icon: "minus.magnifyingglass", label: "Zoom out") { zoomMap(by: Self.zoomOutScale) }
         }
     }
 
@@ -311,6 +318,7 @@ struct MapTabView: View {
         switch item {
         case .spot(let spot):
             selectedSpot = spot
+        // Continental-zoom fallback only; see MapTabViewModel.clusterSpanThreshold.
         case .cluster(_, let latitude, let longitude, _):
             withAnimation {
                 position = .region(MKCoordinateRegion(
@@ -396,7 +404,7 @@ struct MapTabView: View {
         withAnimation {
             position = .region(MKCoordinateRegion(
                 center: coordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.42, longitudeDelta: 0.42)
+                span: MKCoordinateSpan(latitudeDelta: 0.30, longitudeDelta: 0.25)
             ))
         }
     }
@@ -404,7 +412,11 @@ struct MapTabView: View {
     private func zoomMap(by scale: Double) {
         let region = GeoMath.zoomedRegion(visibleRegion, scale: scale)
         visibleRegion = region
-        withAnimation(.easeInOut(duration: 0.25)) {
+        guard !reduceMotion else {
+            position = .region(region)
+            return
+        }
+        withAnimation(.easeInOut(duration: 0.3)) {
             position = .region(region)
         }
     }

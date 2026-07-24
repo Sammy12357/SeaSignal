@@ -45,9 +45,10 @@ final class MapFeatureTests: XCTestCase {
         let data = try fixture(named: "overpass_spots")
         let spots = try OverpassProvider.decode(data)
 
-        XCTAssertEqual(spots.count, 4)
+        // The fixture contains a `man_made=pier` way (id 202) which must now be skipped.
+        XCTAssertEqual(spots.count, 3)
+        XCTAssertFalse(spots.contains { $0.kind == .pier })
         XCTAssertTrue(spots.contains { $0.name == "Ballast Point Ramp" && $0.kind == .ramp })
-        XCTAssertTrue(spots.contains { $0.name == "Fishing pier" && $0.kind == .pier })
         XCTAssertTrue(spots.contains { $0.name == "Trailer Ramp" && $0.details?["Fee"] == "yes" })
         XCTAssertTrue(spots.contains { $0.name == "Kayak Put-in" && $0.details?["Canoe"] == "yes" })
     }
@@ -194,6 +195,159 @@ final class MapFeatureTests: XCTestCase {
         let result = OverpassProvider.deduplicate([generic, named])
 
         XCTAssertEqual(result, [named])
+    }
+
+    // MARK: - Individual pins vs. clustering
+
+    func testSpotsRenderIndividuallyAtBoatingZoom() {
+        let spots = Self.gridSpots(count: 80, baseLatitude: 27.90, baseLongitude: -82.50, spacing: 0.01)
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 27.94, longitude: -82.46),
+            span: MKCoordinateSpan(latitudeDelta: 0.30, longitudeDelta: 0.30)
+        )
+
+        let items = MapTabViewModel().displayItems(
+            filter: .all, favoritesOnly: false, favorites: spots, region: region
+        )
+
+        // Would have clustered under the old thresholds (span > 0.18 or count > 70).
+        XCTAssertEqual(items.count, spots.count)
+        XCTAssertEqual(Self.clusterCount(in: items), 0)
+    }
+
+    func testClusteringStillEngagesAtContinentalZoom() {
+        let spots = Self.gridSpots(count: 500, baseLatitude: 27.0, baseLongitude: -83.0, spacing: 0.05)
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 27.55, longitude: -82.45),
+            span: MKCoordinateSpan(latitudeDelta: 3.0, longitudeDelta: 3.0)
+        )
+
+        let items = MapTabViewModel().displayItems(
+            filter: .all, favoritesOnly: false, favorites: spots, region: region
+        )
+
+        XCTAssertGreaterThan(Self.clusterCount(in: items), 0)
+    }
+
+    // MARK: - Piers
+
+    func testLegacyPierStillDecodesButIsNotDisplayed() throws {
+        let pier = MapSpot(id: "legacy:pier", name: "Old Pier", latitude: 27.95, longitude: -82.46, kind: .pier)
+        let ramp = MapSpot(id: "legacy:ramp", name: "Ballast Point", latitude: 27.90, longitude: -82.51, kind: .ramp)
+
+        // Data written by earlier builds must still decode; removing the enum case would
+        // break MapDiskCache and persisted favourites on upgrade.
+        let decoded = try JSONDecoder().decode(MapSpot.self, from: try JSONEncoder().encode(pier))
+        XCTAssertEqual(decoded.kind, .pier)
+
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 27.93, longitude: -82.49),
+            span: MKCoordinateSpan(latitudeDelta: 0.30, longitudeDelta: 0.30)
+        )
+        let items = MapTabViewModel().displayItems(
+            filter: .all, favoritesOnly: false, favorites: [pier, ramp], region: region
+        )
+
+        XCTAssertEqual(items.count, 1)
+        XCTAssertFalse(items.contains { item in
+            if case .spot(let spot) = item { return spot.kind == .pier }
+            return false
+        })
+    }
+
+    // MARK: - Dedupe precedence
+
+    func testDedupePrefersRampOverPier() {
+        let pier = MapSpot(id: "a", name: "Pier", latitude: 28, longitude: -82.5, kind: .pier)
+        let ramp = MapSpot(id: "b", name: "Ramp", latitude: 28.0003, longitude: -82.5, kind: .ramp)
+
+        XCTAssertEqual(SpotDeduplicator.deduplicate([pier, ramp]), [ramp])
+    }
+
+    func testDedupeKeepsFavoriteOverDiscovery() {
+        // IDs chosen so the discovered spot would win the lexicographic tiebreak;
+        // only the favourite rule should save the favourite.
+        let favorite = MapSpot(id: "z:favorite", name: "My Ramp", latitude: 28, longitude: -82.5, kind: .ramp)
+        let discovered = MapSpot(id: "a:osm", name: "Riverside Ramp", latitude: 28.0002, longitude: -82.5, kind: .ramp)
+
+        let result = SpotDeduplicator.deduplicate([favorite, discovered]) { $0.id == favorite.id }
+
+        XCTAssertEqual(result, [favorite])
+    }
+
+    func testDedupeKeepsDistinctNearbyRamps() {
+        let north = MapSpot(id: "1", name: "North Ramp", latitude: 28, longitude: -82.5, kind: .ramp)
+        let south = MapSpot(id: "2", name: "South Ramp", latitude: 28.0018, longitude: -82.5, kind: .ramp)
+
+        XCTAssertEqual(SpotDeduplicator.deduplicate([north, south]).count, 2)
+    }
+
+    func testDedupeIsStableRegardlessOfInputOrder() {
+        let spots = [
+            MapSpot(id: "1", name: "Public boat ramp", latitude: 28, longitude: -82.5, kind: .ramp),
+            MapSpot(id: "2", name: "Davis Islands Ramp", latitude: 28.0001, longitude: -82.5, kind: .ramp),
+            MapSpot(id: "3", name: "Far Ramp", latitude: 28.05, longitude: -82.5, kind: .ramp)
+        ]
+
+        XCTAssertEqual(
+            SpotDeduplicator.deduplicate(spots).map(\.id),
+            SpotDeduplicator.deduplicate(spots.reversed()).map(\.id)
+        )
+    }
+
+    // MARK: - Zoom
+
+    func testZoomRoundTripReturnsToOriginalSpan() {
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 27.95, longitude: -82.46),
+            span: MKCoordinateSpan(latitudeDelta: 0.30, longitudeDelta: 0.25)
+        )
+
+        let zoomedIn = GeoMath.zoomedRegion(region, scale: 0.5)
+        let restored = GeoMath.zoomedRegion(zoomedIn, scale: 2.0)
+
+        XCTAssertEqual(zoomedIn.span.latitudeDelta, 0.15, accuracy: 0.0001)
+        XCTAssertEqual(restored.span.latitudeDelta, region.span.latitudeDelta, accuracy: 0.0001)
+        XCTAssertEqual(restored.span.longitudeDelta, region.span.longitudeDelta, accuracy: 0.0001)
+    }
+
+    func testZoomClampsAtBounds() {
+        var region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 27.95, longitude: -82.46),
+            span: MKCoordinateSpan(latitudeDelta: 0.30, longitudeDelta: 0.25)
+        )
+
+        for _ in 0..<40 { region = GeoMath.zoomedRegion(region, scale: 0.5) }
+        XCTAssertGreaterThanOrEqual(region.span.latitudeDelta, 0.002)
+
+        for _ in 0..<40 { region = GeoMath.zoomedRegion(region, scale: 2.0) }
+        XCTAssertLessThanOrEqual(region.span.latitudeDelta, 120)
+        XCTAssertLessThanOrEqual(region.span.longitudeDelta, 180)
+    }
+
+    // MARK: - Helpers
+
+    /// Grid of ramps spaced well beyond the dedupe radius so none are collapsed.
+    private static func gridSpots(
+        count: Int,
+        baseLatitude: Double,
+        baseLongitude: Double,
+        spacing: Double
+    ) -> [MapSpot] {
+        let side = Int(Double(count).squareRoot().rounded(.up))
+        return (0..<count).map { index in
+            MapSpot(
+                id: String(format: "test:%04d", index),
+                name: "Ramp \(index)",
+                latitude: baseLatitude + Double(index / side) * spacing,
+                longitude: baseLongitude + Double(index % side) * spacing,
+                kind: .ramp
+            )
+        }
+    }
+
+    private static func clusterCount(in items: [MapDisplayItem]) -> Int {
+        items.filter { if case .cluster = $0 { return true } else { return false } }.count
     }
 
     private func fixture(named name: String) throws -> Data {
