@@ -312,6 +312,8 @@ final class MapFeatureTests: XCTestCase {
     func testCommercialBoatBusinessesAreNotTreatedAsRamps() {
         XCTAssertFalse(RampSearchResultFilter.isLikelyLaunch(name: "Tampa Boat and Jet Ski Rentals"))
         XCTAssertFalse(RampSearchResultFilter.isLikelyLaunch(name: "Bay Boat Repair"))
+        XCTAssertFalse(RampSearchResultFilter.isLikelyLaunch(name: "Boat Launch Location"))
+        XCTAssertFalse(RampSearchResultFilter.isLikelyLaunch(name: "Boat Ramp"))
         XCTAssertTrue(RampSearchResultFilter.isLikelyLaunch(name: "Ballast Point Boat Ramp"))
     }
 

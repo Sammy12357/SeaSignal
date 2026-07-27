@@ -104,7 +104,7 @@ actor MapDiskCache {
     /// Bump when ramp discovery or deduplication changes so a previously cached fallback
     /// cannot hide newly supported launches until its normal expiry.
     private func spotKey(_ region: MKCoordinateRegion) -> String {
-        "spots-v3|\(key(region))"
+        "spots-v4|\(key(region))"
     }
 
     private func windKey(_ region: MKCoordinateRegion, offsetHours: Int) -> String {

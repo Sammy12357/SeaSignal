@@ -9,10 +9,14 @@ enum RampSearchResultFilter {
         "rental", "rentals", "jet ski", "boat dealer", "boat sales",
         "boat repair", "boat tour", "boat tours", "boat charter", "boat charters"
     ]
+    private static let genericAppleNames: Set<String> = [
+        "boat launch location", "boat ramp location", "boat launch", "boat ramp"
+    ]
 
     static func isLikelyLaunch(name: String) -> Bool {
         let normalized = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
-        return !excludedPhrases.contains { normalized.contains($0) }
+        return !genericAppleNames.contains(normalized)
+            && !excludedPhrases.contains { normalized.contains($0) }
     }
 }
 

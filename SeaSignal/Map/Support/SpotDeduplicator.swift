@@ -46,7 +46,12 @@ enum SpotDeduplicator {
     }
 
     static func isGenericName(_ name: String) -> Bool {
-        name == "Public boat ramp" || name == "Fishing pier"
+        switch name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current) {
+        case "public boat ramp", "boat launch location", "boat ramp location", "boat launch", "boat ramp", "fishing pier":
+            true
+        default:
+            false
+        }
     }
 
     /// A nearby weather-interest marker is not a duplicate of a launch. Legacy pier pins
