@@ -1,6 +1,25 @@
 import Foundation
 import MapKit
 
+enum RampSearchResultFilter {
+    /// Map search can interpret "boat ramp" as any boating-related business. These terms
+    /// identify commercial results rather than physical public launch locations. Explicitly
+    /// mapped OSM slipways are not passed through this name-only fallback filter.
+    private static let excludedPhrases = [
+        "rental", "rentals", "jet ski", "boat dealer", "boat sales",
+        "boat repair", "boat tour", "boat tours", "boat charter", "boat charters"
+    ]
+    private static let genericAppleNames: Set<String> = [
+        "boat launch location", "boat ramp location", "boat launch", "boat ramp"
+    ]
+
+    static func isLikelyLaunch(name: String) -> Bool {
+        let normalized = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+        return !genericAppleNames.contains(normalized)
+            && !excludedPhrases.contains { normalized.contains($0) }
+    }
+}
+
 struct OverpassResponse: Decodable {
     let elements: [Element]
 
@@ -44,6 +63,11 @@ struct OverpassProvider: Sendable {
             return SpotFetchResult(spots: cached, wasTruncated: cached.count >= Self.elementLimit)
         }
 
+        // MapKit is a permitted supplementary source for the Apple map. Run it alongside
+        // OSM rather than only after an OSM failure: either catalog can contain a launch the
+        // other does not, and the shared 1,000-foot pass collapses overlap deterministically.
+        async let supplementarySpots = mapKitSearch(in: tile)
+
         do {
             var request = URLRequest(url: endpoint)
             request.httpMethod = "POST"
@@ -57,14 +81,18 @@ struct OverpassProvider: Sendable {
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                 throw URLError(.badServerResponse)
             }
-            let spots = try Self.decode(data)
+            let osmSpots = try Self.decode(data)
+            let spots = Self.deduplicate(osmSpots + (await supplementarySpots))
             await MapDiskCache.shared.store(spots: spots, for: tile)
-            return SpotFetchResult(spots: spots, wasTruncated: spots.count >= Self.elementLimit)
+            return SpotFetchResult(spots: spots, wasTruncated: osmSpots.count >= Self.elementLimit)
         } catch {
             if let stale = await MapDiskCache.shared.staleSpots(for: tile) {
-                return SpotFetchResult(spots: stale, wasTruncated: false)
+                return SpotFetchResult(
+                    spots: Self.deduplicate(stale + (await supplementarySpots)),
+                    wasTruncated: false
+                )
             }
-            let fallback = try await mapKitFallback(in: tile)
+            let fallback = await supplementarySpots
             await MapDiskCache.shared.store(spots: fallback, for: tile)
             return SpotFetchResult(spots: fallback, wasTruncated: false)
         }
@@ -84,6 +112,10 @@ struct OverpassProvider: Sendable {
                 || element.tags?["service"] == "slipway"
                 || element.tags?["waterway"] == "access_point"
                 || element.tags?["amenity"] == "boat_ramp"
+                || element.tags?["canoe"] == "put_in"
+                || element.tags?["canoe"] == "put_in;egress"
+                || element.tags?["whitewater"] == "put_in"
+                || element.tags?["whitewater"] == "put_in;egress"
             guard isRamp else { return nil }
             let kind: SpotKind = .ramp
             let fallback = "Public boat ramp"
@@ -121,6 +153,10 @@ struct OverpassProvider: Sendable {
           nwr["service"="slipway"](\(bounds));
           nwr["waterway"="access_point"](\(bounds));
           nwr["amenity"="boat_ramp"](\(bounds));
+          nwr["canoe"="put_in"](\(bounds));
+          nwr["canoe"="put_in;egress"](\(bounds));
+          nwr["whitewater"="put_in"](\(bounds));
+          nwr["whitewater"="put_in;egress"](\(bounds));
         );
         out center \(Self.elementLimit);
         """
@@ -129,7 +165,7 @@ struct OverpassProvider: Sendable {
         return Data((components.percentEncodedQuery ?? "").utf8)
     }
 
-    private func mapKitFallback(in region: MKCoordinateRegion) async throws -> [MapSpot] {
+    private func mapKitSearch(in region: MKCoordinateRegion) async -> [MapSpot] {
         await withTaskGroup(of: [MapSpot].self) { group in
             // Three distinct queries only. The previous six were near-synonyms that
             // returned the same POIs under slightly different names and coordinates,
@@ -150,7 +186,9 @@ struct OverpassProvider: Sendable {
                         let coordinate = item.placemark.coordinate
                         guard GeoMath.contains(region, coordinate: coordinate) else { return nil }
                         let name = item.name?.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard let name, !name.isEmpty else { return nil }
+                        guard let name, !name.isEmpty, RampSearchResultFilter.isLikelyLaunch(name: name) else {
+                            return nil
+                        }
                         return MapSpot(
                             id: String(format: "mapkit:%@:%0.5f:%0.5f", kind.rawValue, coordinate.latitude, coordinate.longitude),
                             name: name,

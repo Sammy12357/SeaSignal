@@ -7,9 +7,9 @@ import Foundation
 /// `SpotKind`, so when two markers described the same physical place the survivor was
 /// effectively arbitrary. Everything now funnels through this type.
 enum SpotDeduplicator {
-    /// Wide enough to catch an OSM node vs. way-centroid mismatch for the same place,
-    /// tight enough not to merge two genuinely adjacent ramps in one marina.
-    static let radiusMetres: Double = 60
+    /// Product rule: locations within 1,000 feet represent the same launch. Keeping the
+    /// conversion here makes every provider and favorite merge use the exact same radius.
+    static let radiusMetres: Double = 1_000 * 0.3048
 
     /// Collapses spots that fall within `radiusMetres` of one another.
     ///
@@ -17,7 +17,7 @@ enum SpotDeduplicator {
     /// 1. Favourite over non-favourite — a saved launch is never replaced by a discovered pin.
     /// 2. Kind: `.ramp` > `.weatherSpot` > `.pier`.
     /// 3. Named over generic.
-    /// 4. Provider: OpenStreetMap over Apple Maps.
+    /// 4. Provider: OpenStreetMap over Apple Maps when names are equally useful.
     /// 5. Lowest `id` lexicographically, so repeated runs do not flicker.
     ///
     /// `details` from the discarded spot are merged into the survivor wherever the
@@ -31,7 +31,8 @@ enum SpotDeduplicator {
         var result: [MapSpot] = []
         for spot in spots.sorted(by: { $0.id < $1.id }) {
             guard let index = result.firstIndex(where: {
-                GeoMath.distance($0.coordinate, spot.coordinate) < radiusMetres
+                canRepresentSamePlace($0, spot)
+                    && GeoMath.distance($0.coordinate, spot.coordinate) < radiusMetres
             }) else {
                 result.append(spot)
                 continue
@@ -45,7 +46,21 @@ enum SpotDeduplicator {
     }
 
     static func isGenericName(_ name: String) -> Bool {
-        name == "Public boat ramp" || name == "Fishing pier"
+        switch name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current) {
+        case "public boat ramp", "boat launch location", "boat ramp location", "boat launch", "boat ramp", "fishing pier":
+            true
+        default:
+            false
+        }
+    }
+
+    /// A nearby weather-interest marker is not a duplicate of a launch. Legacy pier pins
+    /// can still collapse into ramps so old persisted data does not create double markers.
+    private static func canRepresentSamePlace(_ lhs: MapSpot, _ rhs: MapSpot) -> Bool {
+        if lhs.kind == .weatherSpot || rhs.kind == .weatherSpot {
+            return lhs.kind == rhs.kind
+        }
+        return true
     }
 
     // MARK: - Precedence
