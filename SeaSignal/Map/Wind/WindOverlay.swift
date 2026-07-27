@@ -97,6 +97,7 @@ struct WindOverlay: View {
 struct WindDirectionArrowOverlay: View {
     let field: WindField
     let proxy: MapProxy
+    let region: MKCoordinateRegion
     let lowPowerMode: Bool
 
     var body: some View {
@@ -110,7 +111,10 @@ struct WindDirectionArrowOverlay: View {
                    field.isWater(at: coordinate),
                    let sample = field.sample(at: coordinate),
                    let point = proxy.convert(coordinate, to: .local) {
-                    WindDirectionArrowGlyph(sample: sample)
+                    WindDirectionArrowGlyph(
+                        sample: sample,
+                        zoomScale: WindArrowSizing.scale(forLatitudeSpan: region.span.latitudeDelta)
+                    )
                         .position(point)
                 }
             }
@@ -120,14 +124,32 @@ struct WindDirectionArrowOverlay: View {
     }
 }
 
+enum WindArrowSizing {
+    static let referenceLatitudeSpan = 0.30
+    static let minimumScale = 0.65
+    static let maximumScale = 1.35
+
+    /// Keeps arrows readable without letting them dominate the map: arrows grow as the
+    /// user zooms in and shrink as the user zooms out, with conservative visual caps.
+    static func scale(forLatitudeSpan latitudeSpan: Double) -> Double {
+        let safeSpan = max(latitudeSpan, 0.000_001)
+        let rawScale = sqrt(referenceLatitudeSpan / safeSpan)
+        return min(maximumScale, max(minimumScale, rawScale))
+    }
+}
+
 private struct WindDirectionArrowGlyph: View {
     let sample: (u: Double, v: Double, speed: Double)
+    let zoomScale: Double
 
     var body: some View {
         Canvas(rendersAsynchronously: true) { context, size in
             let magnitude = CGFloat(max(sample.speed, 0.1))
             let direction = CGVector(dx: CGFloat(sample.u) / magnitude, dy: -CGFloat(sample.v) / magnitude)
-            let length = CGFloat(18 + min(sample.speed, 30) * 0.55)
+            let length: CGFloat = 26
+            let shaftHalfWidth: CGFloat = 1.7
+            let headLength: CGFloat = 8
+            let headHalfWidth: CGFloat = 5.2
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
             let tail = CGPoint(
                 x: center.x - direction.dx * length * 0.5,
@@ -138,31 +160,31 @@ private struct WindDirectionArrowGlyph: View {
                 y: center.y + direction.dy * length * 0.5
             )
             let color = WindPalette.color(for: sample.speed)
-            var shaft = Path()
-            shaft.move(to: tail)
-            shaft.addLine(to: head)
-            context.stroke(shaft, with: .color(.black.opacity(0.35)), lineWidth: 3.6)
-            context.stroke(shaft, with: .color(color), lineWidth: 2.1)
-
             let perpendicular = CGVector(dx: -direction.dy, dy: direction.dx)
-            let wingLength = min(8, length * 0.28)
-            let wingBase = CGPoint(
-                x: head.x - direction.dx * wingLength,
-                y: head.y - direction.dy * wingLength
+            let shoulder = CGPoint(
+                x: head.x - direction.dx * headLength,
+                y: head.y - direction.dy * headLength
             )
-            var arrowhead = Path()
-            arrowhead.move(to: CGPoint(
-                x: wingBase.x + perpendicular.dx * wingLength * 0.55,
-                y: wingBase.y + perpendicular.dy * wingLength * 0.55
-            ))
-            arrowhead.addLine(to: head)
-            arrowhead.addLine(to: CGPoint(
-                x: wingBase.x - perpendicular.dx * wingLength * 0.55,
-                y: wingBase.y - perpendicular.dy * wingLength * 0.55
-            ))
-            context.stroke(arrowhead, with: .color(.black.opacity(0.35)), lineWidth: 3.6)
-            context.stroke(arrowhead, with: .color(color), lineWidth: 2.1)
+
+            // One closed path gives every speed the same arrow silhouette. Speed is encoded
+            // only by color, while zoom scales the complete shape without changing proportions.
+            var arrow = Path()
+            arrow.move(to: offset(tail, by: perpendicular, amount: shaftHalfWidth))
+            arrow.addLine(to: offset(shoulder, by: perpendicular, amount: shaftHalfWidth))
+            arrow.addLine(to: offset(shoulder, by: perpendicular, amount: headHalfWidth))
+            arrow.addLine(to: head)
+            arrow.addLine(to: offset(shoulder, by: perpendicular, amount: -headHalfWidth))
+            arrow.addLine(to: offset(shoulder, by: perpendicular, amount: -shaftHalfWidth))
+            arrow.addLine(to: offset(tail, by: perpendicular, amount: -shaftHalfWidth))
+            arrow.closeSubpath()
+            context.fill(arrow, with: .color(color))
+            context.stroke(arrow, with: .color(.black.opacity(0.38)), lineWidth: 1.2)
         }
         .frame(width: 38, height: 38)
+        .scaleEffect(zoomScale)
+    }
+
+    private func offset(_ point: CGPoint, by vector: CGVector, amount: CGFloat) -> CGPoint {
+        CGPoint(x: point.x + vector.dx * amount, y: point.y + vector.dy * amount)
     }
 }

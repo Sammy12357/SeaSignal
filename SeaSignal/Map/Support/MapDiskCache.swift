@@ -45,14 +45,14 @@ actor MapDiskCache {
     }
 
     func spotValue(for region: MKCoordinateRegion, maximumAge: TimeInterval = 20 * 60) -> [MapSpot]? {
-        guard let entry = spots[key(region)], Date().timeIntervalSince(entry.date) <= maximumAge else { return nil }
+        guard let entry = spots[spotKey(region)], Date().timeIntervalSince(entry.date) <= maximumAge else { return nil }
         return entry.spots
     }
 
-    func staleSpots(for region: MKCoordinateRegion) -> [MapSpot]? { spots[key(region)]?.spots }
+    func staleSpots(for region: MKCoordinateRegion) -> [MapSpot]? { spots[spotKey(region)]?.spots }
 
     func store(spots value: [MapSpot], for region: MKCoordinateRegion) {
-        let cacheKey = key(region)
+        let cacheKey = spotKey(region)
         spots[cacheKey] = SpotEntry(key: cacheKey, spots: value, date: Date())
         // Tiles are reused across pans and zooms, so retaining more of them pays off directly.
         if spots.count > 64 {
@@ -99,6 +99,12 @@ actor MapDiskCache {
         let box = GeoMath.boundingBox(region)
         func rounded(_ value: Double) -> String { String(format: "%.2f", value) }
         return "\(rounded(box.south)),\(rounded(box.west)),\(rounded(box.north)),\(rounded(box.east))"
+    }
+
+    /// Bump when ramp discovery or deduplication changes so a previously cached fallback
+    /// cannot hide newly supported launches until its normal expiry.
+    private func spotKey(_ region: MKCoordinateRegion) -> String {
+        "spots-v3|\(key(region))"
     }
 
     private func windKey(_ region: MKCoordinateRegion, offsetHours: Int) -> String {

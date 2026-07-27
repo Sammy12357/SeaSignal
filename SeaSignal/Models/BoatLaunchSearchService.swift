@@ -21,28 +21,32 @@ enum BoatLaunchSearchService {
         near location: CLLocation?,
         constrainToRegion: Bool
     ) async throws -> [BoatLaunch] {
-        var items: [MKMapItem] = []
-
-        for query in queries {
-            let request = MKLocalSearch.Request()
-            request.naturalLanguageQuery = query
-            request.resultTypes = .pointOfInterest
-            if constrainToRegion, let location {
-                request.region = MKCoordinateRegion(
-                    center: location.coordinate,
-                    latitudinalMeters: 100_000,
-                    longitudinalMeters: 100_000
-                )
+        let items = try await withThrowingTaskGroup(of: [MKMapItem].self) { group in
+            for query in queries {
+                group.addTask {
+                    let request = MKLocalSearch.Request()
+                    request.naturalLanguageQuery = query
+                    request.resultTypes = .pointOfInterest
+                    if constrainToRegion, let location {
+                        request.region = MKCoordinateRegion(
+                            center: location.coordinate,
+                            latitudinalMeters: 100_000,
+                            longitudinalMeters: 100_000
+                        )
+                    }
+                    return try await MKLocalSearch(request: request).start().mapItems
+                }
             }
-            items.append(contentsOf: try await MKLocalSearch(request: request).start().mapItems)
+            var combined: [MKMapItem] = []
+            for try await result in group { combined.append(contentsOf: result) }
+            return combined
         }
 
-        var seen = Set<String>()
-        return items.compactMap { item -> BoatLaunch? in
+        let launches = items.compactMap { item -> BoatLaunch? in
             let coordinate = item.placemark.coordinate
             let name = item.name ?? "Boat launch"
+            guard RampSearchResultFilter.isLikelyLaunch(name: name) else { return nil }
             let id = String(format: "%.5f,%.5f", coordinate.latitude, coordinate.longitude)
-            guard seen.insert(id).inserted else { return nil }
             let place = [item.placemark.locality, item.placemark.administrativeArea]
                 .compactMap { $0 }.joined(separator: ", ")
             let distance = location?.distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)) ?? 0
@@ -56,5 +60,15 @@ enum BoatLaunchSearchService {
             )
         }
         .sorted { $0.distanceMetres < $1.distanceMetres }
+
+        var deduplicated: [BoatLaunch] = []
+        for launch in launches where !deduplicated.contains(where: {
+            CLLocation(latitude: $0.latitude, longitude: $0.longitude).distance(
+                from: CLLocation(latitude: launch.latitude, longitude: launch.longitude)
+            ) < SpotDeduplicator.radiusMetres
+        }) {
+            deduplicated.append(launch)
+        }
+        return deduplicated
     }
 }

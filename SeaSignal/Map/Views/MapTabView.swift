@@ -28,6 +28,7 @@ struct MapTabView: View {
     @State private var satellite = false
     @State private var showsMapSettings = false
     @State private var searchText = ""
+    @State private var searchTask: Task<Void, Never>?
     @State private var offsetHours = 0
     @State private var showsLaunchList = false
     @State private var centeredOnUser = false
@@ -109,6 +110,7 @@ struct MapTabView: View {
                     WindDirectionArrowOverlay(
                         field: field,
                         proxy: proxy,
+                        region: visibleRegion,
                         lowPowerMode: lowPowerMode
                     )
                 } else if windDisplayMode == .particleAnimation {
@@ -303,8 +305,10 @@ struct MapTabView: View {
     private func performSearch() {
         let query = searchText
         searchFocused = false
-        Task {
+        searchTask?.cancel()
+        searchTask = Task {
             guard let coordinate = await viewModel.coordinate(forSearch: query, near: visibleRegion) else { return }
+            guard !Task.isCancelled else { return }
             withAnimation {
                 position = .region(MKCoordinateRegion(
                     center: coordinate,

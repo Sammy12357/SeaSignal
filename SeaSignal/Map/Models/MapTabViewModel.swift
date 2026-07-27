@@ -38,6 +38,7 @@ final class MapTabViewModel: ObservableObject {
     private var windTask: Task<Void, Never>?
     private var observationTask: Task<Void, Never>?
     private var airportTask: Task<Void, Never>?
+    private var searchCache: [String: CLLocationCoordinate2D] = [:]
 
     func regionSettled(
         _ region: MKCoordinateRegion,
@@ -103,10 +104,57 @@ final class MapTabViewModel: ObservableObject {
     func coordinate(forSearch query: String, near region: MKCoordinateRegion) async -> CLLocationCoordinate2D? {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
+        let key = Self.normalizedSearchText(trimmed)
+
+        if let local = Self.bestLocalSearchCoordinate(
+            for: key,
+            spots: spots,
+            airports: airportObservations,
+            marineStations: windObservations,
+            near: region.center
+        ) {
+            return local
+        }
+        if let cached = searchCache[key] { return cached }
+
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = trimmed
         request.region = region
-        return try? await MKLocalSearch(request: request).start().mapItems.first?.placemark.coordinate
+        request.resultTypes = [.address, .pointOfInterest]
+        guard let coordinate = try? await MKLocalSearch(request: request).start().mapItems.first?.placemark.coordinate else {
+            return nil
+        }
+        searchCache[key] = coordinate
+        return coordinate
+    }
+
+    static func bestLocalSearchCoordinate(
+        for normalizedQuery: String,
+        spots: [MapSpot],
+        airports: [AirportObservation],
+        marineStations: [WindObservation],
+        near center: CLLocationCoordinate2D
+    ) -> CLLocationCoordinate2D? {
+        let candidates = spots.map { ($0.name, $0.coordinate) }
+            + airports.map { ("\($0.stationID) \($0.stationName)", $0.coordinate) }
+            + marineStations.map { ("\($0.stationID) \($0.stationName)", $0.coordinate) }
+
+        return candidates.compactMap { name, coordinate -> (Int, Double, CLLocationCoordinate2D)? in
+            let candidate = normalizedSearchText(name)
+            let rank: Int
+            if candidate == normalizedQuery { rank = 0 }
+            else if candidate.hasPrefix(normalizedQuery) { rank = 1 }
+            else if candidate.contains(normalizedQuery) { rank = 2 }
+            else { return nil }
+            return (rank, GeoMath.distance(center, coordinate), coordinate)
+        }
+        .min { lhs, rhs in lhs.0 == rhs.0 ? lhs.1 < rhs.1 : lhs.0 < rhs.0 }?
+        .2
+    }
+
+    static func normalizedSearchText(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
     }
 
     static func merge(discovered: [MapSpot], favorites: [MapSpot]) -> [MapSpot] {

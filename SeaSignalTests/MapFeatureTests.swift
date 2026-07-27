@@ -5,6 +5,18 @@ import XCTest
 
 @MainActor
 final class MapFeatureTests: XCTestCase {
+    func testWindArrowScaleGrowsWhenZoomingInAndStaysBounded() {
+        let reference = WindArrowSizing.scale(forLatitudeSpan: 0.30)
+        let zoomedIn = WindArrowSizing.scale(forLatitudeSpan: 0.075)
+        let zoomedOut = WindArrowSizing.scale(forLatitudeSpan: 1.20)
+
+        XCTAssertEqual(reference, 1.0, accuracy: 0.0001)
+        XCTAssertGreaterThan(zoomedIn, reference)
+        XCTAssertLessThan(zoomedOut, reference)
+        XCTAssertEqual(WindArrowSizing.scale(forLatitudeSpan: 0.0001), 1.35, accuracy: 0.0001)
+        XCTAssertEqual(WindArrowSizing.scale(forLatitudeSpan: 100), 0.65, accuracy: 0.0001)
+    }
+
     func testWindFieldBilinearInterpolation() throws {
         let field = WindField(
             rows: 2, columns: 2,
@@ -277,9 +289,54 @@ final class MapFeatureTests: XCTestCase {
 
     func testDedupeKeepsDistinctNearbyRamps() {
         let north = MapSpot(id: "1", name: "North Ramp", latitude: 28, longitude: -82.5, kind: .ramp)
-        let south = MapSpot(id: "2", name: "South Ramp", latitude: 28.0018, longitude: -82.5, kind: .ramp)
+        let south = MapSpot(id: "2", name: "South Ramp", latitude: 28.0032, longitude: -82.5, kind: .ramp)
 
         XCTAssertEqual(SpotDeduplicator.deduplicate([north, south]).count, 2)
+    }
+
+    func testDedupeUsesOneThousandFootRadius() {
+        XCTAssertEqual(SpotDeduplicator.radiusMetres, 304.8, accuracy: 0.0001)
+
+        let origin = MapSpot(id: "1", name: "Ramp", latitude: 28, longitude: -82.5, kind: .ramp)
+        let withinOneThousandFeet = MapSpot(
+            id: "2", name: "Same ramp", latitude: 28.0025, longitude: -82.5, kind: .ramp
+        )
+        let outsideOneThousandFeet = MapSpot(
+            id: "3", name: "Different ramp", latitude: 28.0029, longitude: -82.5, kind: .ramp
+        )
+
+        XCTAssertEqual(SpotDeduplicator.deduplicate([origin, withinOneThousandFeet]).count, 1)
+        XCTAssertEqual(SpotDeduplicator.deduplicate([origin, outsideOneThousandFeet]).count, 2)
+    }
+
+    func testCommercialBoatBusinessesAreNotTreatedAsRamps() {
+        XCTAssertFalse(RampSearchResultFilter.isLikelyLaunch(name: "Tampa Boat and Jet Ski Rentals"))
+        XCTAssertFalse(RampSearchResultFilter.isLikelyLaunch(name: "Bay Boat Repair"))
+        XCTAssertTrue(RampSearchResultFilter.isLikelyLaunch(name: "Ballast Point Boat Ramp"))
+    }
+
+    func testMapSearchUsesLoadedRampWithoutNetworkLookup() throws {
+        let ballast = MapSpot(
+            id: "ballast", name: "Ballast Point Boat Ramp", latitude: 27.8896, longitude: -82.4808, kind: .ramp
+        )
+        let result = MapTabViewModel.bestLocalSearchCoordinate(
+            for: MapTabViewModel.normalizedSearchText("ballast point"),
+            spots: [ballast],
+            airports: [],
+            marineStations: [],
+            near: CLLocationCoordinate2D(latitude: 27.95, longitude: -82.46)
+        )
+
+        XCTAssertEqual(try XCTUnwrap(result).latitude, ballast.latitude, accuracy: 0.0001)
+    }
+
+    func testDedupeDoesNotHideWeatherSpotNearRamp() {
+        let ramp = MapSpot(id: "ramp", name: "Ramp", latitude: 28, longitude: -82.5, kind: .ramp)
+        let weather = MapSpot(
+            id: "weather", name: "Weather reference", latitude: 28.0002, longitude: -82.5, kind: .weatherSpot
+        )
+
+        XCTAssertEqual(SpotDeduplicator.deduplicate([ramp, weather]).count, 2)
     }
 
     func testDedupeIsStableRegardlessOfInputOrder() {
