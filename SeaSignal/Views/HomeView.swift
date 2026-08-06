@@ -169,7 +169,36 @@ struct HomeView: View {
 struct LaunchCard: View {
     let launch: BoatLaunch
 
+    private var current: HourlyConditions? {
+        (launch.forecastHours ?? []).min { abs($0.time.timeIntervalSinceNow) < abs($1.time.timeIntervalSinceNow) }
+    }
+
+    private var weatherSymbol: String {
+        switch current?.weatherCode ?? 0 { case 51...82: "cloud.rain.fill"; case 1...3: "cloud.sun.fill"; default: "sun.max.fill" }
+    }
+
     var body: some View {
+        HStack(spacing: 12) {
+            WindStrengthBar(speedKPH: Double(launch.windSpeed))
+            VStack(spacing: 3) {
+                Image(systemName: "arrow.up").rotationEffect(.degrees(current?.windDirectionDegrees ?? 0))
+                Text("\(Int((Double(launch.windSpeed) * 0.539957).rounded())) kts").font(.subheadline.bold())
+                Text("max \(Int((Double(launch.gustSpeed) * 0.539957).rounded()))").font(.caption2).foregroundStyle(.secondary)
+            }.frame(width: 64)
+            Image(systemName: weatherSymbol).font(.title2).foregroundStyle(.oceanBlue).frame(width: 34)
+            Text(current?.airTemperatureC.map { "\(Int(($0 * 9 / 5 + 32).rounded()))°F" } ?? "—")
+                .font(.subheadline.bold()).frame(width: 44)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(launch.name).font(.headline).foregroundStyle(.deepNavy).lineLimit(1)
+                Text("Forecast · \(launch.location)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "map.circle.fill").font(.title2).foregroundStyle(.oceanBlue)
+        }
+        .frame(minHeight: 66)
+        .padding(.horizontal, 12)
+        .background(.cardBackground, in: RoundedRectangle(cornerRadius: 16))
+        /*
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -197,15 +226,7 @@ struct LaunchCard: View {
         }
         .padding(16)
         .background(.cardBackground, in: RoundedRectangle(cornerRadius: 18))
+        */
     }
 
-    private func timeBlock(title: String, time: String, icon: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon).foregroundStyle(.oceanBlue)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.caption2.weight(.bold)).foregroundStyle(.secondary)
-                Text(time).font(.subheadline.weight(.semibold)).foregroundStyle(.deepNavy)
-            }
-        }
-    }
 }

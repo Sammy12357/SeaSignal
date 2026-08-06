@@ -19,6 +19,7 @@ struct MarineValue: Sendable {
     let wavePeriodSeconds: Double?
     let swellHeightM: Double?
     let modeledSeaLevelM: Double?
+    var waveDirectionDegrees: Double? = nil
 }
 
 struct OpenMeteoWeatherResponse: Decodable {
@@ -33,6 +34,9 @@ struct OpenMeteoWeatherResponse: Decodable {
         let precipitation_probability: [Double?]
         let precipitation: [Double?]
         let is_day: [Int?]
+        let temperature_2m: [Double?]?
+        let surface_pressure: [Double?]?
+        let weather_code: [Int?]?
     }
 }
 
@@ -46,6 +50,7 @@ struct OpenMeteoMarineResponse: Decodable {
         let wave_period: [Double?]
         let swell_wave_height: [Double?]
         let sea_level_height_msl: [Double?]
+        let wave_direction: [Double?]?
     }
 }
 
@@ -55,7 +60,7 @@ struct OpenMeteoWeatherProvider: Sendable {
         components.queryItems = [
             URLQueryItem(name: "latitude", value: String(latitude)),
             URLQueryItem(name: "longitude", value: String(longitude)),
-            URLQueryItem(name: "hourly", value: "wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation_probability,precipitation,is_day"),
+            URLQueryItem(name: "hourly", value: "wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation_probability,precipitation,is_day,temperature_2m,surface_pressure,weather_code"),
             URLQueryItem(name: "wind_speed_unit", value: "kmh"),
             URLQueryItem(name: "timezone", value: "auto"),
             URLQueryItem(name: "forecast_days", value: "7")
@@ -76,7 +81,10 @@ struct OpenMeteoWeatherProvider: Sendable {
                 wavePeriodSeconds: nil,
                 swellHeightM: nil,
                 tideHeightM: nil,
-                isDaylight: (decoded.hourly.is_day[safe: index] ?? nil).map { $0 == 1 }
+                isDaylight: (decoded.hourly.is_day[safe: index] ?? nil).map { $0 == 1 },
+                airTemperatureC: decoded.hourly.temperature_2m?[safe: index] ?? nil,
+                surfacePressureHPa: decoded.hourly.surface_pressure?[safe: index] ?? nil,
+                weatherCode: decoded.hourly.weather_code?[safe: index] ?? nil
             )
         }
         return WeatherDataset(
@@ -94,7 +102,7 @@ struct OpenMeteoMarineProvider: Sendable {
         components.queryItems = [
             URLQueryItem(name: "latitude", value: String(latitude)),
             URLQueryItem(name: "longitude", value: String(longitude)),
-            URLQueryItem(name: "hourly", value: "wave_height,wave_period,swell_wave_height,sea_level_height_msl"),
+            URLQueryItem(name: "hourly", value: "wave_height,wave_period,swell_wave_height,sea_level_height_msl,wave_direction"),
             URLQueryItem(name: "timezone", value: "auto"),
             URLQueryItem(name: "forecast_days", value: "7"),
             URLQueryItem(name: "cell_selection", value: "sea")
@@ -109,7 +117,8 @@ struct OpenMeteoMarineProvider: Sendable {
                 waveHeightM: decoded.hourly.wave_height[safe: index] ?? nil,
                 wavePeriodSeconds: decoded.hourly.wave_period[safe: index] ?? nil,
                 swellHeightM: decoded.hourly.swell_wave_height[safe: index] ?? nil,
-                modeledSeaLevelM: decoded.hourly.sea_level_height_msl[safe: index] ?? nil
+                modeledSeaLevelM: decoded.hourly.sea_level_height_msl[safe: index] ?? nil,
+                waveDirectionDegrees: decoded.hourly.wave_direction?[safe: index] ?? nil
             )
         }
         return MarineDataset(

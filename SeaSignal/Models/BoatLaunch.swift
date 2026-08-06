@@ -33,6 +33,9 @@ struct BoatLaunch: Identifiable, Hashable, Codable, Sendable {
     var forecastIsStale: Bool? = nil
     var summary: String = "Loading the latest forecast for this location."
     var forecastUpdatedAt: Date? = nil
+    var forecastTimezoneIdentifier: String? = nil
+    var forecastHours: [HourlyConditions]? = nil
+    var tideEvents: [TideEvent]? = nil
 
     var distance: String {
         if distanceMetres < 1_000 { return "\(Int(distanceMetres)) m" }

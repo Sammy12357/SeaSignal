@@ -10,6 +10,7 @@ enum ForecastTimelineBuilder {
                 merged.waveHeightM = marineValue.waveHeightM
                 merged.wavePeriodSeconds = marineValue.wavePeriodSeconds
                 merged.swellHeightM = marineValue.swellHeightM
+                merged.waveDirectionDegrees = marineValue.waveDirectionDegrees
                 if tides == nil { merged.tideHeightM = marineValue.modeledSeaLevelM }
             }
             if let tideHeight = tides?.hourlyHeights[key] {

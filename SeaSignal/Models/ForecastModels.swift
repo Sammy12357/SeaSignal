@@ -12,6 +12,10 @@ struct HourlyConditions: Codable, Hashable, Sendable {
     var swellHeightM: Double?
     var tideHeightM: Double?
     var isDaylight: Bool?
+    var airTemperatureC: Double? = nil
+    var surfacePressureHPa: Double? = nil
+    var weatherCode: Int? = nil
+    var waveDirectionDegrees: Double? = nil
 }
 
 struct TideStation: Codable, Hashable, Sendable {

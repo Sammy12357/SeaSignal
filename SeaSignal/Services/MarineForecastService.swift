@@ -17,6 +17,7 @@ struct MarineForecast: Sendable {
     let summary: String
     let updatedAt: Date
     let isStale: Bool
+    let timeline: ForecastTimeline
 }
 
 struct MarineForecastService: Sendable {
@@ -62,7 +63,8 @@ struct MarineForecastService: Sendable {
                 rationale: ["No contiguous trip window stays within all of your saved safety limits."],
                 summary: "No safe window was found in the seven-day forecast.",
                 updatedAt: timeline.fetchedAt,
-                isStale: timeline.isStale
+                isStale: timeline.isStale,
+                timeline: timeline
             )
         }
 
@@ -83,7 +85,8 @@ struct MarineForecastService: Sendable {
             rationale: recommendation.rationale,
             summary: recommendation.rationale.first ?? "This is the highest-scoring safe window in the next seven days.",
             updatedAt: timeline.fetchedAt,
-            isStale: timeline.isStale
+            isStale: timeline.isStale,
+            timeline: timeline
         )
     }
 

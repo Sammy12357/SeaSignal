@@ -105,6 +105,9 @@ extension BoatLaunch {
         forecastIsStale = forecast.isStale
         summary = forecast.summary
         forecastUpdatedAt = forecast.updatedAt
+        forecastTimezoneIdentifier = forecast.timeline.timezoneIdentifier
+        forecastHours = forecast.timeline.hours
+        tideEvents = forecast.timeline.tideEvents
     }
 }
 
