@@ -149,13 +149,24 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
             for await (id, forecast) in group {
                 guard let index = launches.firstIndex(where: { $0.id == id }) else { continue }
                 guard let forecast else {
-                    launches[index].conditions = .caution
-                    launches[index].summary = "Live marine forecast is unavailable for this location."
-                    launches[index].launchTime = "Unavailable"
-                    launches[index].retrievalTime = "Unavailable"
-                    launches[index].highTide = "Unavailable"
-                    launches[index].lowTide = "Unavailable"
-                    launches[index].tideSource = "No tide source available"
+                    if launches[index].forecastHours?.isEmpty == false {
+                        launches[index].forecastIsStale = true
+                        launches[index].summary = "Offline — showing the last saved forecast."
+                    } else {
+                        launches[index].conditions = .caution
+                        launches[index].forecastIsStale = nil
+                        launches[index].summary = "Live marine forecast is unavailable for this location."
+                        launches[index].launchTime = "Unavailable"
+                        launches[index].retrievalTime = "Unavailable"
+                        launches[index].highTide = "Unavailable"
+                        launches[index].lowTide = "Unavailable"
+                        launches[index].tideSource = "No tide source available"
+                        launches[index].windSpeed = nil
+                        launches[index].gustSpeed = nil
+                        launches[index].waveHeight = nil
+                        launches[index].wavePeriod = nil
+                        launches[index].rainChance = nil
+                    }
                     continue
                 }
                 launches[index].apply(forecast)
@@ -186,7 +197,7 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
             location: "Custom map pin",
             latitude: coordinate.latitude,
             longitude: coordinate.longitude,
-            distanceMetres: userLocation?.distance(from: location) ?? 0
+            distanceMetres: userLocation?.distance(from: location)
         )
         merge([launch])
         var updated = favoriteIDs
@@ -210,7 +221,16 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
     }
 
     func favoriteLaunch(matching spot: MapSpot) -> BoatLaunch? {
-        favorites.first { GeoMath.distance($0.coordinate, spot.coordinate) < 50 }
+        if let exact = favorites.first(where: { $0.id == "map:\(spot.id)" }) { return exact }
+        // Coordinate-only matching is retained solely for favourites written by older builds.
+        // Requiring a compatible name prevents two adjacent official facilities from being
+        // treated as the same saved launch.
+        return favorites.first {
+            GeoMath.distance($0.coordinate, spot.coordinate) < 50
+                && (SpotDeduplicator.isGenericName($0.name)
+                    || SpotDeduplicator.isGenericName(spot.name)
+                    || SpotDeduplicator.namesReferToSameFacility($0.name, spot.name))
+        }
     }
 
     func isFavorite(_ spot: MapSpot) -> Bool {
@@ -224,10 +244,10 @@ final class LaunchStore: NSObject, ObservableObject, @preconcurrency CLLocationM
         let launch = BoatLaunch(
             id: id,
             name: spot.name,
-            location: spot.kind.label,
+            location: spot.details?["Address"] ?? spot.facilityType?.label ?? spot.kind.label,
             latitude: spot.latitude,
             longitude: spot.longitude,
-            distanceMetres: userLocation?.distance(from: coordinate) ?? 0
+            distanceMetres: userLocation?.distance(from: coordinate)
         )
         merge([launch])
         favoriteIDs.insert(id)

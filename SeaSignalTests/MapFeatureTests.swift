@@ -53,6 +53,95 @@ final class MapFeatureTests: XCTestCase {
         XCTAssertTrue(spots.contains { $0.name == "Kayak Put-in" && $0.details?["Canoe"] == "yes" })
     }
 
+    func testFloridaInventoryDecodesOfficialBallastPointRecord() throws {
+        let data = Data("""
+        {
+          "features": [{
+            "attributes": {
+              "RampID": "HL00179JY",
+              "RampType": "Stand Alone Ramp",
+              "RampName": "Ballast Point Park Public Boat Ramp",
+              "AccessType": "Government Owned for General Public Use",
+              "PrimaryAdminEntity": "City of Tampa",
+              "Status": "Open for Business",
+              "Street1": "5300 Interbay Blvd",
+              "City": "Tampa", "StateCode": "FL", "ZipCode": "33611",
+              "TotalLanes": 2, "Trailer": 20,
+              "WaterBodyName": "Hillsborough Bay",
+              "last_edited_date": 1751328000000
+            },
+            "geometry": { "x": -82.4809250001, "y": 27.8894769997 }
+          }],
+          "exceededTransferLimit": false
+        }
+        """.utf8)
+
+        let result = try FloridaBoatRampProvider.decode(data)
+        let spot = try XCTUnwrap(result.spots.first)
+
+        XCTAssertEqual(result.spots.count, 1)
+        XCTAssertEqual(spot.id, "fwc:HL00179JY")
+        XCTAssertEqual(spot.name, "Ballast Point Park Public Boat Ramp")
+        XCTAssertEqual(spot.latitude, 27.8894769997, accuracy: 0.0000001)
+        XCTAssertEqual(spot.longitude, -82.4809250001, accuracy: 0.0000001)
+        XCTAssertEqual(spot.verificationLevel, .official)
+        XCTAssertEqual(spot.accessType, .publicAccess)
+        XCTAssertEqual(spot.operationalStatus, .open)
+        XCTAssertEqual(spot.facilityType, .motorized)
+        XCTAssertEqual(spot.coordinateType, .physicalRamp)
+        XCTAssertEqual(spot.details?["Operator"], "City of Tampa")
+        XCTAssertEqual(spot.details?["Launch lanes"], "2")
+        XCTAssertNotNil(spot.lastVerifiedAt)
+    }
+
+    func testFloridaInventoryExcludesPrivateClosedAndSeaplaneRecords() throws {
+        func feature(id: String, type: String, access: String, status: String) -> String {
+            """
+            {"attributes":{"RampID":"\(id)","RampType":"\(type)","RampName":"Test \(id)","AccessType":"\(access)","Status":"\(status)"},"geometry":{"x":-82.5,"y":28.0}}
+            """
+        }
+        let json = """
+        {"features":[
+          \(feature(id: "PRIVATE", type: "Stand Alone Ramp", access: "Private", status: "Open for Business")),
+          \(feature(id: "CLOSED", type: "Stand Alone Ramp", access: "Government Owned for General Public Use", status: "Permanently Closed")),
+          \(feature(id: "PLANE", type: "Seaplane Ramp", access: "Government Owned for General Public Use", status: "Open for Business"))
+        ]}
+        """
+
+        XCTAssertTrue(try FloridaBoatRampProvider.decode(Data(json.utf8)).spots.isEmpty)
+    }
+
+    func testFloridaInventoryCorrectsKnownSourceTypoButRetainsAlias() throws {
+        let json = """
+        {"features":[{"attributes":{"RampID":"HL00002AA","RampType":"Hand Launch Only","RampName":"Cyoress Point Park Paddlecraft Launch","AccessType":"Government Owned for General Public Use","Status":"Open for Business"},"geometry":{"x":-82.55,"y":27.96}}]}
+        """
+        let spot = try XCTUnwrap(FloridaBoatRampProvider.decode(Data(json.utf8)).spots.first)
+
+        XCTAssertEqual(spot.name, "Cypress Point Park Paddlecraft Launch")
+        XCTAssertEqual(spot.aliases, ["Cyoress Point Park Paddlecraft Launch"])
+        XCTAssertEqual(spot.facilityType, .paddle)
+    }
+
+    func testOverpassRejectsPrivateAndAmbiguousWaterAccessPoints() throws {
+        let json = """
+        {"elements":[
+          {"type":"node","id":1,"lat":28.0,"lon":-82.5,"tags":{"leisure":"slipway","access":"private","name":"Private Ramp"}},
+          {"type":"node","id":2,"lat":28.0,"lon":-82.51,"tags":{"waterway":"access_point","name":"Ambiguous Access"}},
+          {"type":"node","id":3,"lat":28.0,"lon":-82.52,"tags":{"waterway":"access_point","boat":"designated","name":"Public Access"}}
+        ]}
+        """
+        let spots = try OverpassProvider.decode(Data(json.utf8))
+
+        XCTAssertEqual(spots.map(\.id), ["osm:node:3"])
+    }
+
+    func testRampNameClassifierRejectsRentalsAndAcceptsRealLaunches() {
+        XCTAssertFalse(RampNameClassifier.isLikelyLaunch("Tampa Boat and Jet Ski Rentals"))
+        XCTAssertFalse(RampNameClassifier.isLikelyLaunch("Cruisin' Tikis Tampa"))
+        XCTAssertTrue(RampNameClassifier.isLikelyLaunch("Ballast Point Public Boat Ramp"))
+        XCTAssertTrue(RampNameClassifier.isLikelyLaunch("Cypress Point Kayak Launch"))
+    }
+
     func testWindGridDecoderUsesNearestHour() throws {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -194,7 +283,9 @@ final class MapFeatureTests: XCTestCase {
 
         let result = OverpassProvider.deduplicate([generic, named])
 
-        XCTAssertEqual(result, [named])
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result.first?.id, named.id)
+        XCTAssertEqual(result.first?.aliases, [generic.name])
     }
 
     // MARK: - Individual pins vs. clustering
@@ -261,7 +352,9 @@ final class MapFeatureTests: XCTestCase {
         let pier = MapSpot(id: "a", name: "Pier", latitude: 28, longitude: -82.5, kind: .pier)
         let ramp = MapSpot(id: "b", name: "Ramp", latitude: 28.0003, longitude: -82.5, kind: .ramp)
 
-        XCTAssertEqual(SpotDeduplicator.deduplicate([pier, ramp]), [ramp])
+        let result = SpotDeduplicator.deduplicate([pier, ramp])
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result.first?.id, ramp.id)
     }
 
     func testDedupeKeepsFavoriteOverDiscovery() {
@@ -272,7 +365,8 @@ final class MapFeatureTests: XCTestCase {
 
         let result = SpotDeduplicator.deduplicate([favorite, discovered]) { $0.id == favorite.id }
 
-        XCTAssertEqual(result, [favorite])
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result.first?.id, favorite.id)
     }
 
     func testDedupeKeepsDistinctNearbyRamps() {
@@ -280,6 +374,49 @@ final class MapFeatureTests: XCTestCase {
         let south = MapSpot(id: "2", name: "South Ramp", latitude: 28.0018, longitude: -82.5, kind: .ramp)
 
         XCTAssertEqual(SpotDeduplicator.deduplicate([north, south]).count, 2)
+    }
+
+    func testDedupePrefersOfficialRecordForSameNearbyFacility() {
+        let official = MapSpot(
+            id: "fwc:HL00179JY", name: "Ballast Point Park Public Boat Ramp",
+            latitude: 27.88947, longitude: -82.48092, kind: .ramp, provider: "Florida FWC",
+            canonicalID: "fwc:HL00179JY", sourceID: "HL00179JY", verificationLevel: .official
+        )
+        let osm = MapSpot(
+            id: "osm:node:42", name: "Ballast Point Boat Ramp",
+            latitude: 27.88960, longitude: -82.48080, kind: .ramp, provider: "OpenStreetMap",
+            sourceID: "node:42", verificationLevel: .communityConfirmed
+        )
+
+        let result = SpotDeduplicator.deduplicate([osm, official])
+
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result.first?.id, official.id)
+        XCTAssertEqual(result.first?.aliases, [osm.name])
+    }
+
+    func testDedupeNeverCollapsesDistinctOfficialIDsWithinOneThousandFeet() {
+        let north = MapSpot(
+            id: "fwc:A", name: "North Basin Ramp", latitude: 28, longitude: -82.5,
+            kind: .ramp, provider: "Florida FWC", canonicalID: "fwc:A", verificationLevel: .official
+        )
+        let south = MapSpot(
+            id: "fwc:B", name: "South Basin Ramp", latitude: 28.0001, longitude: -82.5,
+            kind: .ramp, provider: "Florida FWC", canonicalID: "fwc:B", verificationLevel: .official
+        )
+
+        XCTAssertEqual(SpotDeduplicator.deduplicate([north, south]).count, 2)
+    }
+
+    func testLegacyMapSpotDecodesWithoutCatalogMetadata() throws {
+        let json = """
+        {"id":"legacy","name":"Legacy Ramp","latitude":28,"longitude":-82.5,"kind":"ramp"}
+        """
+        let spot = try JSONDecoder().decode(MapSpot.self, from: Data(json.utf8))
+
+        XCTAssertNil(spot.canonicalID)
+        XCTAssertNil(spot.verificationLevel)
+        XCTAssertEqual(spot.name, "Legacy Ramp")
     }
 
     func testDedupeIsStableRegardlessOfInputOrder() {

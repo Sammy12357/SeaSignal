@@ -16,7 +16,10 @@ struct LaunchDetailView: View {
                             .font(.subheadline.weight(selectedTab == tab ? .bold : .medium))
                             .foregroundStyle(selectedTab == tab ? Color.oceanBlue : .secondary)
                             .padding(.horizontal, 13).padding(.vertical, 11)
+                            .frame(minHeight: 44)
                             .overlay(alignment: .bottom) { if selectedTab == tab { Capsule().fill(Color.oceanBlue).frame(height: 3) } }
+                            .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
+                            .accessibilityHint("Shows the \(tab.rawValue) section")
                     }
                 }.padding(.horizontal, 10)
             }.background(Color.cardBackground)
@@ -30,17 +33,28 @@ struct LaunchDetailView: View {
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Color.mist.ignoresSafeArea()).navigationTitle(displayedLaunch.name).navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItemGroup(placement: .topBarTrailing) {
-            ShareLink(item: "SeaSignal forecast for \(displayedLaunch.name): \(displayedLaunch.summary)") { Image(systemName: "square.and.arrow.up") }
-            Button { store.toggleFavorite(displayedLaunch) } label: { Image(systemName: store.isFavorite(displayedLaunch) ? "heart.fill" : "heart") }
-        } }
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                ShareLink(item: "SeaSignal forecast for \(displayedLaunch.name): \(displayedLaunch.summary)") {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityLabel("Share forecast for \(displayedLaunch.name)")
+
+                Button { store.toggleFavorite(displayedLaunch) } label: {
+                    Image(systemName: store.isFavorite(displayedLaunch) ? "heart.fill" : "heart")
+                }
+                .accessibilityLabel(store.isFavorite(displayedLaunch) ? "Remove from favorites" : "Add to favorites")
+                .accessibilityHint("Keeps this detail screen open")
+            }
+        }
         .sheet(isPresented: $showsTideStations) { TideStationPickerView(launch: displayedLaunch).environmentObject(store) }
     }
 
     private var spotInfo: some View {
         ScrollView { VStack(alignment: .leading, spacing: 18) {
             Label(displayedLaunch.location, systemImage: "mappin.and.ellipse").font(.title3.bold())
-            Text(displayedLaunch.distance + " away").foregroundStyle(.secondary)
+            Text(displayedLaunch.distance == "Distance unavailable" ? displayedLaunch.distance : displayedLaunch.distance + " away")
+                .foregroundStyle(.secondary)
             Text(displayedLaunch.summary)
             Divider(); Text("Tide source").font(.headline); Text(displayedLaunch.tideSource).foregroundStyle(.secondary)
             Button("Choose tide station") { showsTideStations = true }.buttonStyle(.bordered)

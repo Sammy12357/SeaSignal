@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var store: LaunchStore
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         NavigationStack {
@@ -26,6 +27,9 @@ struct HomeView: View {
             }
             .background(Color.mist.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: BoatLaunch.self) { launch in
+                LaunchDetailView(launch: launch)
+            }
         }
     }
 
@@ -54,26 +58,46 @@ struct HomeView: View {
     }
 
     private var header: some View {
-        HStack {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top) {
+                greetingText
+                Spacer()
+                notificationIcon
+            }
+            VStack(alignment: .leading, spacing: 12) {
+                greetingText
+                notificationIcon
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 12)
+    }
+
+    private var greetingText: some View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("SEA SIGNAL")
                     .font(.caption.weight(.bold))
                     .tracking(2)
                     .foregroundStyle(.oceanBlue)
-                Text(greeting)
+                Text(dynamicTypeSize.isAccessibilitySize
+                     ? greeting.replacingOccurrences(of: " ", with: "\n")
+                     : greeting)
                     .font(.largeTitle.bold())
                     .foregroundStyle(.deepNavy)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text("Here’s your outlook for \(Date.now.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            Spacer()
-            Image(systemName: "bell.fill")
-                .foregroundStyle(.oceanBlue)
-                .frame(width: 44, height: 44)
-                .background(.cardBackground, in: Circle())
-        }
-        .padding(.top, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var notificationIcon: some View {
+        Image(systemName: "bell.fill")
+            .foregroundStyle(.oceanBlue)
+            .frame(width: 44, height: 44)
+            .background(.cardBackground, in: Circle())
+            .accessibilityLabel("Alerts")
     }
 
     private var greeting: String {
@@ -102,14 +126,14 @@ struct HomeView: View {
                         .font(.headline)
                 }
 
-                HStack(spacing: 0) {
-                    metric(icon: "wind", value: "\(launch.windSpeed) km/h", label: "Wind")
-                    Divider().overlay(.white.opacity(0.4))
-                    metric(icon: "water.waves", value: launch.waveHeight.map { String(format: "%.1f m", $0) } ?? "N/A", label: "Waves")
-                    Divider().overlay(.white.opacity(0.4))
-                    metric(icon: "arrow.up.to.line", value: compactTide(launch.highTide), label: "High tide")
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 0) {
+                        bestWindowMetrics(for: launch)
+                    }
+                    VStack(alignment: .leading, spacing: 12) {
+                        bestWindowMetrics(for: launch)
+                    }
                 }
-                .frame(height: 48)
 
                 Text(launch.summary)
                     .font(.subheadline)
@@ -124,8 +148,29 @@ struct HomeView: View {
             .shadow(color: .oceanBlue.opacity(0.22), radius: 14, y: 8)
         }
         .buttonStyle(.plain)
-        .navigationDestination(for: BoatLaunch.self) { launch in
-            LaunchDetailView(launch: launch)
+    }
+
+    @ViewBuilder
+    private func bestWindowMetrics(for launch: BoatLaunch) -> some View {
+        let current = currentConditions(for: launch)
+        metric(
+            icon: "wind",
+            value: ForecastUnits.knots(fromKPH: current?.windSpeedKPH).map { "\($0) kts" } ?? "Unavailable",
+            label: "Wind"
+        )
+        Divider().overlay(.white.opacity(0.4))
+        metric(
+            icon: "water.waves",
+            value: ForecastUnits.feet(fromMetres: current?.waveHeightM).map { String(format: "%.1f ft", $0) } ?? "Unavailable",
+            label: "Waves"
+        )
+        Divider().overlay(.white.opacity(0.4))
+        metric(icon: "arrow.up.to.line", value: compactTide(launch.highTide), label: "High tide")
+    }
+
+    private func currentConditions(for launch: BoatLaunch) -> HourlyConditions? {
+        (launch.forecastHours ?? []).min {
+            abs($0.time.timeIntervalSinceNow) < abs($1.time.timeIntervalSinceNow)
         }
     }
 
@@ -174,59 +219,111 @@ struct LaunchCard: View {
     }
 
     private var weatherSymbol: String {
-        switch current?.weatherCode ?? 0 { case 51...82: "cloud.rain.fill"; case 1...3: "cloud.sun.fill"; default: "sun.max.fill" }
+        guard let code = current?.weatherCode else { return "questionmark.circle" }
+        switch code {
+        case 0: return current?.isDaylight == false ? "moon.stars.fill" : "sun.max.fill"
+        case 1...3: return "cloud.sun.fill"
+        case 45...48: return "cloud.fog.fill"
+        case 51...67, 80...82: return "cloud.rain.fill"
+        case 71...77, 85...86: return "cloud.snow.fill"
+        case 95...99: return "cloud.bolt.rain.fill"
+        default: return "questionmark.circle"
+        }
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            WindStrengthBar(speedKPH: Double(launch.windSpeed))
-            VStack(spacing: 3) {
-                Image(systemName: "arrow.up").rotationEffect(.degrees(current?.windDirectionDegrees ?? 0))
-                Text("\(Int((Double(launch.windSpeed) * 0.539957).rounded())) kts").font(.subheadline.bold())
-                Text("max \(Int((Double(launch.gustSpeed) * 0.539957).rounded()))").font(.caption2).foregroundStyle(.secondary)
-            }.frame(width: 64)
-            Image(systemName: weatherSymbol).font(.title2).foregroundStyle(.oceanBlue).frame(width: 34)
-            Text(current?.airTemperatureC.map { "\(Int(($0 * 9 / 5 + 32).rounded()))°F" } ?? "—")
-                .font(.subheadline.bold()).frame(width: 44)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(launch.name).font(.headline).foregroundStyle(.deepNavy).lineLimit(1)
-                Text("Forecast · \(launch.location)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        HStack(alignment: .top, spacing: 10) {
+            WindStrengthBar(speedKPH: current?.windSpeedKPH)
+                .frame(height: 64)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(launch.name)
+                            .font(.headline)
+                            .foregroundStyle(.deepNavy)
+                            .lineLimit(2)
+                        Text(statusText)
+                            .font(.caption)
+                            .foregroundStyle(statusColor)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "map.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.oceanBlue)
+                        .accessibilityHidden(true)
+                }
+
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 14) { measurementItems }
+                    VStack(alignment: .leading, spacing: 7) { measurementItems }
+                }
             }
-            Spacer(minLength: 0)
-            Image(systemName: "map.circle.fill").font(.title2).foregroundStyle(.oceanBlue)
         }
-        .frame(minHeight: 66)
-        .padding(.horizontal, 12)
+        .padding(12)
         .background(.cardBackground, in: RoundedRectangle(cornerRadius: 16))
-        /*
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(launch.name).font(.headline).foregroundStyle(.deepNavy)
-                    Label("\(launch.location) · \(launch.distance)", systemImage: "location.fill")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
-                ConditionBadge(conditions: launch.conditions)
-            }
-
-            Divider()
-
-            if launch.conditions == .avoid || launch.conditions == .loading {
-                Text(launch.summary).font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                HStack {
-                    timeBlock(title: "LAUNCH", time: launch.launchTime, icon: "arrow.down.circle.fill")
-                    Spacer()
-                    Image(systemName: "arrow.right").foregroundStyle(.tertiary)
-                    Spacer()
-                    timeBlock(title: "RETRIEVE", time: launch.retrievalTime, icon: "arrow.up.circle.fill")
-                }
-            }
-        }
-        .padding(16)
-        .background(.cardBackground, in: RoundedRectangle(cornerRadius: 18))
-        */
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilitySummary)
     }
 
+    @ViewBuilder
+    private var measurementItems: some View {
+        measurement(
+            icon: current?.windDirectionDegrees == nil ? "wind" : "arrow.up",
+            rotation: current?.windDirectionDegrees,
+            value: ForecastUnits.knots(fromKPH: current?.windSpeedKPH).map { "\($0) kts" } ?? "Wind —"
+        )
+        measurement(
+            icon: "wind.circle",
+            value: ForecastUnits.knots(fromKPH: current?.windGustKPH).map { "Gust \($0) kts" } ?? "Gust —"
+        )
+        measurement(icon: weatherSymbol, value: weatherText)
+        measurement(
+            icon: "thermometer.medium",
+            value: ForecastUnits.fahrenheit(fromCelsius: current?.airTemperatureC).map { "\($0)°F" } ?? "Air —"
+        )
+    }
+
+    private func measurement(icon: String, rotation: Double? = nil, value: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .rotationEffect(.degrees(rotation ?? 0))
+                .foregroundStyle(.oceanBlue)
+            Text(value).font(.caption.weight(.semibold))
+        }
+    }
+
+    private var weatherText: String {
+        guard let code = current?.weatherCode else { return "Weather —" }
+        switch code {
+        case 0: return "Clear"
+        case 1...3: return "Cloudy"
+        case 45...48: return "Fog"
+        case 51...67, 80...82: return "Rain"
+        case 71...77, 85...86: return "Snow"
+        case 95...99: return "Storms"
+        default: return "Weather code \(code)"
+        }
+    }
+
+    private var statusText: String {
+        if launch.forecastIsStale == true { return "Offline · saved forecast" }
+        if launch.conditions == .loading { return "Updating forecast" }
+        if launch.forecastHours?.isEmpty != false { return "Forecast unavailable" }
+        return "\(launch.conditions.rawValue) forecast · \(launch.location)"
+    }
+
+    private var statusColor: Color {
+        if launch.forecastIsStale == true { return .warningOrange }
+        if launch.conditions == .ideal { return .seaGreen }
+        return .secondary
+    }
+
+    private var accessibilitySummary: String {
+        var values = [launch.name, statusText]
+        if let wind = ForecastUnits.knots(fromKPH: current?.windSpeedKPH) { values.append("Wind \(wind) knots") }
+        if let gust = ForecastUnits.knots(fromKPH: current?.windGustKPH) { values.append("Gusts \(gust) knots") }
+        if let temperature = ForecastUnits.fahrenheit(fromCelsius: current?.airTemperatureC) { values.append("Temperature \(temperature) degrees Fahrenheit") }
+        return values.joined(separator: ", ")
+    }
 }

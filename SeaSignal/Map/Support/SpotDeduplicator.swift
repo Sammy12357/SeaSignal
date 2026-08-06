@@ -7,11 +7,13 @@ import Foundation
 /// `SpotKind`, so when two markers described the same physical place the survivor was
 /// effectively arbitrary. Everything now funnels through this type.
 enum SpotDeduplicator {
-    /// Wide enough to catch an OSM node vs. way-centroid mismatch for the same place,
-    /// tight enough not to merge two genuinely adjacent ramps in one marina.
-    static let radiusMetres: Double = 60
+    /// The requested 1,000-foot duplicate search radius. Identity and compatible-name
+    /// checks below still prevent proximity alone from collapsing separately named ramps.
+    static let radiusMetres: Double = 304.8
 
-    /// Collapses spots that fall within `radiusMetres` of one another.
+    /// Collapses records that describe the same facility and fall within `radiusMetres`.
+    /// Proximity alone is deliberately insufficient: two named, independently identified
+    /// ramps can legitimately sit next to one another in a marina or park.
     ///
     /// Survivor precedence, in order:
     /// 1. Favourite over non-favourite — a saved launch is never replaced by a discovered pin.
@@ -31,7 +33,7 @@ enum SpotDeduplicator {
         var result: [MapSpot] = []
         for spot in spots.sorted(by: { $0.id < $1.id }) {
             guard let index = result.firstIndex(where: {
-                GeoMath.distance($0.coordinate, spot.coordinate) < radiusMetres
+                shouldMerge($0, spot, radiusMetres: radiusMetres, isFavorite: isFavorite)
             }) else {
                 result.append(spot)
                 continue
@@ -45,7 +47,68 @@ enum SpotDeduplicator {
     }
 
     static func isGenericName(_ name: String) -> Bool {
-        name == "Public boat ramp" || name == "Fishing pier"
+        let normalized = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return normalized == "public boat ramp"
+            || normalized == "boat launch"
+            || normalized == "boat ramp"
+            || normalized == "fishing pier"
+    }
+
+    static func namesReferToSameFacility(_ lhs: String, _ rhs: String) -> Bool {
+        let left = normalizedName(lhs)
+        let right = normalizedName(rhs)
+        guard !left.isEmpty, !right.isEmpty else { return false }
+        if left == right { return true }
+        let leftTokens = Set(left.split(separator: " ").map(String.init))
+        let rightTokens = Set(right.split(separator: " ").map(String.init))
+        let union = leftTokens.union(rightTokens)
+        guard !union.isEmpty else { return false }
+        return Double(leftTokens.intersection(rightTokens).count) / Double(union.count) >= 0.8
+    }
+
+    private static func shouldMerge(
+        _ lhs: MapSpot,
+        _ rhs: MapSpot,
+        radiusMetres: Double,
+        isFavorite: (MapSpot) -> Bool
+    ) -> Bool {
+        if lhs.id == rhs.id { return true }
+        if let left = lhs.canonicalID, let right = rhs.canonicalID {
+            return left == right
+        }
+        if let left = lhs.sourceID, let right = rhs.sourceID, lhs.provider == rhs.provider {
+            return left == right
+        }
+        guard GeoMath.distance(lhs.coordinate, rhs.coordinate) < radiusMetres else { return false }
+
+        // Weather-interest locations and launch facilities are separate map concepts even
+        // when they intentionally share a shoreline coordinate.
+        if lhs.kind == .weatherSpot || rhs.kind == .weatherSpot {
+            return lhs.kind == rhs.kind && namesReferToSameFacility(lhs.name, rhs.name)
+        }
+
+        // Never collapse two distinct official records merely because their ramps are close.
+        if lhs.verificationLevel == .official, rhs.verificationLevel == .official {
+            return false
+        }
+        if isFavorite(lhs) || isFavorite(rhs) { return true }
+        if isGenericName(lhs.name) || isGenericName(rhs.name) { return true }
+        if lhs.kind != rhs.kind { return true }
+        return namesReferToSameFacility(lhs.name, rhs.name)
+    }
+
+    private static func normalizedName(_ value: String) -> String {
+        let ignored: Set<String> = [
+            "boat", "boating", "public", "ramp", "ramps", "launch", "landing",
+            "park", "regional", "conservation", "facility", "access"
+        ]
+        return value.lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty && !ignored.contains($0) }
+            .map { token in
+                token.count > 4 && token.hasSuffix("s") ? String(token.dropLast()) : token
+            }
+            .joined(separator: " ")
     }
 
     // MARK: - Precedence
@@ -67,6 +130,10 @@ enum SpotDeduplicator {
         let rhsNamed = !isGenericName(rhs.name)
         if lhsNamed != rhsNamed { return lhsNamed ? lhs : rhs }
 
+        let lhsVerification = rank(verification: lhs.verificationLevel)
+        let rhsVerification = rank(verification: rhs.verificationLevel)
+        if lhsVerification != rhsVerification { return lhsVerification > rhsVerification ? lhs : rhs }
+
         let lhsProvider = rank(provider: lhs.provider)
         let rhsProvider = rank(provider: rhs.provider)
         if lhsProvider != rhsProvider { return lhsProvider > rhsProvider ? lhs : rhs }
@@ -84,16 +151,27 @@ enum SpotDeduplicator {
 
     private static func rank(provider: String?) -> Int {
         switch provider {
+        case "Florida FWC": 4
+        case "SeaSignal verified catalog": 3
         case "OpenStreetMap": 2
         case "Apple Maps": 0
         default: 1
         }
     }
 
+    private static func rank(verification: RampVerificationLevel?) -> Int {
+        switch verification {
+        case .official: 4
+        case .verified: 3
+        case .communityConfirmed: 2
+        case .unverified: 1
+        case nil: 0
+        }
+    }
+
     private static func merging(_ survivor: MapSpot, with discarded: MapSpot) -> MapSpot {
-        guard let extra = discarded.details, !extra.isEmpty else { return survivor }
         var merged = survivor.details ?? [:]
-        for (key, value) in extra where merged[key] == nil {
+        for (key, value) in discarded.details ?? [:] where merged[key] == nil {
             merged[key] = value
         }
         return MapSpot(
@@ -103,7 +181,25 @@ enum SpotDeduplicator {
             longitude: survivor.longitude,
             kind: survivor.kind,
             provider: survivor.provider,
-            details: merged
+            details: merged.isEmpty ? nil : merged,
+            canonicalID: survivor.canonicalID ?? discarded.canonicalID,
+            sourceID: survivor.sourceID ?? discarded.sourceID,
+            sourceURL: survivor.sourceURL ?? discarded.sourceURL,
+            verificationLevel: survivor.verificationLevel ?? discarded.verificationLevel,
+            accessType: survivor.accessType ?? discarded.accessType,
+            operationalStatus: survivor.operationalStatus ?? discarded.operationalStatus,
+            facilityType: survivor.facilityType ?? discarded.facilityType,
+            coordinateType: survivor.coordinateType ?? discarded.coordinateType,
+            lastVerifiedAt: survivor.lastVerifiedAt ?? discarded.lastVerifiedAt,
+            aliases: mergedAliases(survivor, discarded),
+            navigationLatitude: survivor.navigationLatitude ?? discarded.navigationLatitude,
+            navigationLongitude: survivor.navigationLongitude ?? discarded.navigationLongitude
         )
+    }
+
+    private static func mergedAliases(_ survivor: MapSpot, _ discarded: MapSpot) -> [String]? {
+        let values = Set((survivor.aliases ?? []) + (discarded.aliases ?? []) + [discarded.name])
+            .filter { $0 != survivor.name }
+        return values.isEmpty ? nil : values.sorted()
     }
 }

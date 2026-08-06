@@ -14,7 +14,7 @@ struct BoatLaunch: Identifiable, Hashable, Codable, Sendable {
     let location: String
     let latitude: Double
     let longitude: Double
-    var distanceMetres: Double
+    var distanceMetres: Double? = nil
     var tideStationID: String? = nil
     var tideStationName: String? = nil
     var conditions: Conditions = .loading
@@ -23,8 +23,8 @@ struct BoatLaunch: Identifiable, Hashable, Codable, Sendable {
     var highTide: String = "Checking…"
     var lowTide: String = "Checking…"
     var tideSource: String = "Checking tide source…"
-    var windSpeed: Int = 0
-    var gustSpeed: Int = 0
+    var windSpeed: Int? = nil
+    var gustSpeed: Int? = nil
     var waveHeight: Double? = nil
     var wavePeriod: Double? = nil
     var rainChance: Int? = nil
@@ -38,6 +38,7 @@ struct BoatLaunch: Identifiable, Hashable, Codable, Sendable {
     var tideEvents: [TideEvent]? = nil
 
     var distance: String {
+        guard let distanceMetres else { return "Distance unavailable" }
         if distanceMetres < 1_000 { return "\(Int(distanceMetres)) m" }
         return String(format: "%.1f km", distanceMetres / 1_000)
     }

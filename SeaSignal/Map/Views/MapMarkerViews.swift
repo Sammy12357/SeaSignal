@@ -8,7 +8,7 @@ struct SpotPinView: View {
         ZStack {
             Image(systemName: "mappin")
                 .font(.system(size: 44, weight: .bold))
-                .foregroundStyle(isFavorite ? Color.red : Color.oceanBlue)
+                .foregroundStyle(pinColor)
                 .shadow(color: .black.opacity(0.24), radius: 2, y: 2)
             Image(systemName: isFavorite ? "star.fill" : spot.kind.glyph)
                 .font(.system(size: isFavorite ? 15 : 12, weight: .bold))
@@ -17,7 +17,24 @@ struct SpotPinView: View {
         }
         .frame(width: 48, height: 52)
         .contentShape(Rectangle())
-        .accessibilityLabel("\(spot.name), \(spot.kind.label)\(isFavorite ? ", favorite" : "")")
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    private var pinColor: Color {
+        if isFavorite { return .red }
+        if spot.operationalStatus == .temporarilyClosed { return .warningOrange }
+        if spot.verificationLevel == .official { return .seaGreen }
+        return .oceanBlue
+    }
+
+    private var accessibilitySummary: String {
+        [
+            spot.name,
+            spot.facilityType?.label ?? spot.kind.label,
+            spot.verificationLevel?.label,
+            spot.operationalStatus?.label,
+            isFavorite ? "favorite" : nil
+        ].compactMap { $0 }.joined(separator: ", ")
     }
 }
 

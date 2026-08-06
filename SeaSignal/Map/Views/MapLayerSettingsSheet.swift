@@ -60,6 +60,17 @@ struct MapLayerSettingsSheet: View {
                     }
                 }
 
+                Section("Boat ramps") {
+                    Label("Green pins are official Florida FWC records", systemImage: "checkmark.seal.fill")
+                        .foregroundStyle(.green)
+                    Label("Orange pins are reported temporarily closed", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text("Outside Florida, community OpenStreetMap data is preferred, with strictly filtered Apple Maps results as a fallback. Nearby records are matched by identity and name within 1,000 feet.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Link("Florida FWC boat-ramp inventory", destination: URL(string: FloridaBoatRampProvider.sourcePage)!)
+                }
+
                 Section("Map type") {
                     Picker("Map type", selection: $satellite) {
                         Text("Standard").tag(false)

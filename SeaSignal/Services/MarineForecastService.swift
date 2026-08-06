@@ -7,8 +7,8 @@ struct MarineForecast: Sendable {
     let highTide: String
     let lowTide: String
     let tideSource: String
-    let windSpeed: Int
-    let gustSpeed: Int
+    let windSpeed: Int?
+    let gustSpeed: Int?
     let waveHeight: Double?
     let wavePeriod: Double?
     let rainChance: Int?
@@ -54,8 +54,8 @@ struct MarineForecastService: Sendable {
                 highTide: highText,
                 lowTide: lowText,
                 tideSource: timeline.tideSource,
-                windSpeed: Int((current?.windSpeedKPH ?? 0).rounded()),
-                gustSpeed: Int((current?.windGustKPH ?? 0).rounded()),
+                windSpeed: current?.windSpeedKPH.map { Int($0.rounded()) },
+                gustSpeed: current?.windGustKPH.map { Int($0.rounded()) },
                 waveHeight: current?.waveHeightM,
                 wavePeriod: current?.wavePeriodSeconds,
                 rainChance: current?.precipitationProbability.map { Int($0.rounded()) },
@@ -76,8 +76,8 @@ struct MarineForecastService: Sendable {
             highTide: highText,
             lowTide: lowText,
             tideSource: timeline.tideSource,
-            windSpeed: Int((current?.windSpeedKPH ?? 0).rounded()),
-            gustSpeed: Int((current?.windGustKPH ?? 0).rounded()),
+            windSpeed: current?.windSpeedKPH.map { Int($0.rounded()) },
+            gustSpeed: current?.windGustKPH.map { Int($0.rounded()) },
             waveHeight: current?.waveHeightM,
             wavePeriod: current?.wavePeriodSeconds,
             rainChance: current?.precipitationProbability.map { Int($0.rounded()) },
@@ -109,4 +109,3 @@ struct MarineForecastService: Sendable {
         return (high, low)
     }
 }
-

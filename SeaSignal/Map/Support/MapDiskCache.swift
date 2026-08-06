@@ -98,7 +98,9 @@ actor MapDiskCache {
     private func key(_ region: MKCoordinateRegion) -> String {
         let box = GeoMath.boundingBox(region)
         func rounded(_ value: Double) -> String { String(format: "%.2f", value) }
-        return "\(rounded(box.south)),\(rounded(box.west)),\(rounded(box.north)),\(rounded(box.east))"
+        // Keep pre-catalog caches readable on disk, but do not serve them after the
+        // provider/identity model changed. This forces one fresh official-source lookup.
+        return "ramp-catalog-v2|\(rounded(box.south)),\(rounded(box.west)),\(rounded(box.north)),\(rounded(box.east))"
     }
 
     private func windKey(_ region: MKCoordinateRegion, offsetHours: Int) -> String {
